@@ -2,6 +2,7 @@ import ROOT
 from array import array
 import optparse
 import os,sys
+import utils
 from UserCode.TopMassSecVtx.storeTools_cff import fillFromStore
 
 """
@@ -167,7 +168,7 @@ def getAnalysisHistograms() :
     histos={}
 
     #pT positive lepton
-    bins_ptpos_gen=[20,25,30,35,40,45,50,55,60,65,70,80,90,100,125,150,200]
+    bins_ptpos_gen=[0,40,80,120,160,200,240,280,320,360,400]
     bins_ptpos_rec=[]
     for i in xrange(0,len(bins_ptpos_gen)):
         bins_ptpos_rec.append(bins_ptpos_gen[i]+0.5)
@@ -192,7 +193,7 @@ def getAnalysisHistograms() :
 Loop over a tree and create histograms
 """
 def createSummary(filename,isData,outDir):
-    
+ 
     #define histograms
     histos=getAnalysisHistograms()
     
@@ -226,23 +227,52 @@ def createSummary(filename,isData,outDir):
         glm.SetPtEtaPhiM(tree.GenLmPt,tree.GenLmEta,tree.GenLmPhi,0.)
 
         #fill the histograms
-        histos['ptpos_rec'].Fill(lp.Pt(),weight)
-        binWidth=histos['ptpos_rec_wgt'].GetXaxis().GetBinWidth( histos['ptpos_rec_wgt'].GetXaxis().FindBin(lp.Pt() ) )
-        histos['ptpos_rec_wgt'].Fill(lp.Pt(),weight/binWidth)
+        #histos['ptpos_rec'].Fill(lp.Pt(),weight)
+	#binWidth=histos['ptpos_rec_wgt'].GetXaxis().GetBinWidth( histos['ptpos_rec_wgt'].GetXaxis().FindBin(lp.Pt() ) )
+        #histos['ptpos_rec_wgt'].Fill(lp.Pt(),weight/binWidth)
         if not isData:
             histos['ptpos_gen'].Fill(glp.Pt(),weight)
             histos['ptpos_migration'].Fill(glp.Pt(),lp.Pt(),weight)
 
     #close file
     fIn.Close()
-    
+
+
+    binhistos={}
+
     #dump histograms to file
-    fOut=ROOT.TFile.Open(os.path.join(outDir,os.path.basename(filename)),'RECREATE')
-    for h in histos: histos[h].Write()
-    print 'Histograms saved in %s' % fOut.GetName()
-    fOut.Close()
-
-
+    #fOut=ROOT.TFile.Open(os.path.join(outDir,os.path.basename(filename)),'RECREATE')
+    for h in histos: 
+	#histos[h].Write()
+        #print 'Getting quantiles for %s' %filename
+	if h != 'ptpos_migration':
+	  gen={}
+	  rec={}
+	  recw={}
+	  #if not isData:
+	  if h == 'ptpos_gen':
+		gen[h]=utils.quantiles(histos[h])
+	        binhistos['ptpos_gen']=ROOT.TH1F(h+'_bin',';p_{T}(l^{+}l)[GeV];Events',len(gen[h])-1,array('d',gen[h]))
+	        binhistos['ptpos_gen'].SetDirectory(0)
+        	binhistos['ptpos_gen'].Sumw2()
+                binhistos['ptpos_gen']=utils.fileget2(filename,isData,outDir,binhistos['ptpos_gen'])
+          #else:
+	  #if h == 'ptpos_rec':
+          #      rec[h]=utils.quantiles(histos[h])
+          #      binhistos['ptpos_rec']=ROOT.TH1F(h+'_bin',';p_{T}(l^{+}l)[GeV];Events',len(rec[h])-1,array('d',rec[h]))
+          #      binhistos['ptpos_rec'].SetDirectory(0)
+          #      binhistos['ptpos_rec'].Sumw2()
+		#binhistos['ptpos_rec']=utils.fileget(filename,isData,outDir,binhistos['ptpos_rec'])
+          #if h == 'ptpos_rec_wgt':
+          #      recw[h]=utils.quantiles(histos[h]) 
+          #      binhistos['ptpos_rec_wgt']=ROOT.TH1F(h+'_bin',';p_{T}(l^{+}l)[GeV];Events',len(recw[h])-1,array('d',recw[h]))
+           #     binhistos['ptpos_rec_wgt'].SetDirectory(0)
+            #    binhistos['ptpos_rec_wgt'].Sumw2()
+                #binhistos['ptpos_rec_wgt']=utils.fileget3(filename,isData,outDir,binhistos['ptpos_rec_wgt'])
+    #print 'Histograms saved in %s' % fOut.GetName()
+    
+    #fOut.Close()
+   
 """
 Wrapper for when the analysis is run in parallel
 """
@@ -250,6 +280,9 @@ def createSummaryPacked(args):
     filename,isData,outDir = args
     try:
         return createSummary(filename=filename,isData=isData,outDir=outDir)
+        print 50*'<'
+        print " Doing something"
+        print 50*'<'
     except ReferenceError:
         print 50*'<'
         print "  Problem with", name, "continuing without"
