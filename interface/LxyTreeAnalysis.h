@@ -148,6 +148,8 @@ public:
     Long64_t fMaxevents;
     Float_t fProcessNorm;
 
+    TH1D *fLJNtkWeights;
+
     std::vector<TH1*> fHistos;
 
     // Charm resonance histos
@@ -174,6 +176,9 @@ public:
     TH1D *fHMET, *fHMET_e, *fHMET_m, *fHMET_ee, *fHMET_mm, *fHMET_em;
 
     TH1D *fHMjj, *fHMjj_e, *fHMjj_m;
+    TH1D *fHMjj_ch, *fHMjj_e_ch, *fHMjj_m_ch;
+    TH1D *fHMjj_ch_reweighted, *fHMjj_e_ch_reweighted, *fHMjj_m_ch_reweighted;
+    TH1D *fHLJNtk, *fHLJNtk_e, *fHLJNtk_m, *fHLJNtk_reweighted;
     TH1D *fHMT, *fHMT_e, *fHMT_m;
 
     // Drell-Yan control region
