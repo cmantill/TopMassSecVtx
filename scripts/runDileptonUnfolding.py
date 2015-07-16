@@ -6,6 +6,7 @@ import optparse
 import numpy as np
 import os,sys
 from UserCode.TopMassSecVtx.storeTools_cff import fillFromStore
+from makeSVLMassHistos import getMassTrees
 
 """
 useful to list what's in a directory
@@ -17,47 +18,6 @@ def getPathToObjects(directory):
     return objPath
 
 from UserCode.TopMassSecVtx.PlotUtils import *
-
-"""
-Get first three Mellin moments from each of the distributions
-"""
-def getMoments(opt):
-
-    histos={}
-    
-    #open ROOT file
-    fIn=ROOT.TFile.Open(opt.root)
-
-    #unfolded histograms generated level
-    unfolded       = getPathToObjects(fIn.Get('%s_unfolded'%(opt.var)))
-    for p in unfolded:
-        h=fIn.Get(p)
-        hname=h.GetName()
-        if 'data' in hname : 
-            histos['data'] = h.Clone('data')
-        else:
-            histos['signal'] = h.Clone('signal')
-
-    #detach objects from file and close file
-    for h in histos : histos[h].SetDirectory(0)
-    fIn.Close()
-
-    #Get moments
-    mean = histos['data'].GetMean()
-    rms = histos['data'].GetRMS()
-    i = histos['data'].GetXaxis().FindBin(mean)
-    imean = histos['data'].GetBinCenter(i)
-    
-    u0 = 1
-    u1 = mean
-    u2 = mean**2 + rms
-
-    #Create a text file with the three different moments for the corresponding mass
-    outfileName = 'moments_' + opt.var + '_' + opt.mass   
-    m = opt.mass
-    outfile = open(outfileName,'a')
-    outfile.write('%s %4.6f %4.6f %4.6f\n' %(m,u0,u1,u2))
-    outfile.close()
 
 """
 Shows the unfolded result and saves histograms to file
@@ -91,8 +51,6 @@ def showResult(data,signal,var,outDir):
 """
 Unfolding cycle
 """
-# I won't change any of this for now, but please check before running unfolding
-# There might be some problems with the migration matrix. Check.
 def unfoldVariable(opt):
 
     histos={}
@@ -107,7 +65,7 @@ def unfoldVariable(opt):
         hname=h.GetName()
         if 'Data' in hname : 
             histos['data']=h.Clone('data')
-        elif 'TTJets' in hname or 'SingleT' in hname:
+        elif 'TTJets' in hname:
             if not 'signal' in histos : 
                 histos['signal']=h.Clone('signal')
             else : 
@@ -121,7 +79,7 @@ def unfoldVariable(opt):
     for p in genList:
         h=fIn.Get(p)
         hname=h.GetName()
-        if 'TTJets' in hname or 'SingleT' in hname:
+        if 'TTJets' in hname:
             if not 'signal_gen' in histos : 
                 histos['signal_gen']=h.Clone('signal_gen')
             else : 
@@ -132,33 +90,39 @@ def unfoldVariable(opt):
     for p in migrationList:
         h=fIn.Get(p)
         hname=h.GetName()
-        if 'TTJets' in hname or 'SingleT' in hname:
+        if 'TTJets' in hname:
             if not 'migration' in histos : 
                 histos['migration']=h.Clone('migration')
             else : 
                 histos['migration'].Add(h)
-                
+
     #detach objects from file and close file
-    for h in histos : histos[h].SetDirectory(0)
+    for h in histos: histos[h].SetDirectory(0)
     fIn.Close()
+
+    #dump migration matrix in a root file or use that histogram as migration matrix
+    filenamem = 'unfoldResultsRebin/'+opt.var+'/plots/migration_'+opt.var+'_TTJets.root'
     
-    if opt.mig is True:
-        #dump migration matrix in a root file
-        filenamem = 'unfoldResultsRebin/'+opt.var+'/plots/migration_'+opt.var+'.root'
-        fOut=ROOT.TFile.Open(filenamem,'NEW')
-        histos['migration'].Write()
-        print 'Migration histograms saved in %s' % filenamem
+    #dump migration matrix in a root file to test it
+    #filenamem = 'results_test/ptpos/169/migration_ptpos169_SingleT.root'
+    #fOut=ROOT.TFile.Open(filenamem,'RECREATE')
+    #histos['migration'].Write()
+    #print 'Migration histograms saved in %s' % filenamem
+    #fOut.Close()
 
-        tunfold=ROOT.TUnfoldSys(histos['migration'], ROOT.TUnfold.kHistMapOutputHoriz, ROOT.TUnfold.kRegModeCurvature)
-    else:
-        #dump migration matrix in a root file
-        filenamem = 'unfoldResultsRebin/'+opt.var+'/plots/migration_'+opt.var+'.root'
-        fIn=ROOT.TFile.Open(filenamem)
-        histos['migration']=ROOT.TH1F.fIn.Get("migration"); 
-        print 'Migration histogram read from %s' % filenamem
-        fIn.Close()
+    # Get migration matrix from 172v5 samples
+    fInp=ROOT.TFile.Open(filenamem)       
+    hmist=ROOT.TH2D() 
+    hmist=fInp.Get("migration")
+    hmist.SetDirectory(0)
+    fInp.Close()
 
-        tunfold=ROOT.TUnfoldSys(histos['migration'], ROOT.TUnfold.kHistMapOutputHoriz, ROOT.TUnfold.kRegModeCurvature)
+    # Save matrix to check if it is reading correctly
+    #filenamet='results_test/ptpos/171/migration_ptpos_TTJets_rebin.root'
+    #fOut=ROOT.TFile.Open(filenamet,'RECREATE')
+    #hmist.Write()
+    #print 'Migration histograms saved in %s'%(filenamet)
+    #fOut.Close()
 
     #
     # UNFOLDING STEP
@@ -167,14 +131,19 @@ def unfoldVariable(opt):
     # but you can choose one of the other modes or give your own regularization conditions 
     # if this doesn't fit your needs cf. http://root.cern.ch/root/html/TUnfold.html
     #
+
+    # Use migration matrix from each mass sample
     #tunfold=ROOT.TUnfoldSys(histos['migration'], ROOT.TUnfold.kHistMapOutputHoriz, ROOT.TUnfold.kRegModeCurvature)
+    
+    # Use migration matrix read from filenamem
+    tunfold=ROOT.TUnfoldSys(hmist, ROOT.TUnfold.kHistMapOutputHoriz, ROOT.TUnfold.kRegModeCurvature)
 
     # define the data histogram to be unfolded
-    tunfold.SetInput(histos['data'])
+    tunfold.SetInput(histos['signal'])
     
     # Set a "bias" distribution, i.e. your MC truth distribution
     # corresponding to what you expect to see after unfolding.
-    tunfold.SetBias(histos['signal_gen'])
+    #tunfold.SetBias(histos['signal_gen'])
 
     # Scale factor for the "bias" distribution. 
     # Choose such that normalization will correspond to expected normalization of result. 
@@ -183,8 +152,8 @@ def unfoldVariable(opt):
     scaleBias = 1.0
 
     #background subtraction
-    bkgScale, bkgUnc = 1.0, 0.15
-    tunfold.SubtractBackground(histos['bkg'], "bkg", bkgScale, bkgUnc)
+    #bkgScale, bkgUnc = 1.0, 0.15
+    #tunfold.SubtractBackground(histos['bkg'], "bkg", bkgScale, bkgUnc)
 
     # Regularization parameter, giving the strength of regularization. Will be roughly on the order of 1e-4.
     # You can determine this by performing unfolding with many different values, 
@@ -202,7 +171,7 @@ def unfoldVariable(opt):
     tau=1e-4
 
     #regularization parameter
-    tunfold.DoUnfold(tau, histos['data'], scaleBias);
+    tunfold.DoUnfold(tau, histos['signal'], scaleBias)
 
     #get the unfolded distribution
     data_unfolded=histos['signal_gen'].Clone('data_unfolded')
@@ -288,40 +257,32 @@ def createHistos(var,filename,isData,histos,q):
     fIn=ROOT.TFile.Open(filename)
     
     #loop over events in the tree and fill histos
-    #tree=fIn.Get('DileptonInfo')
-    tree=fIn.Get('dataAnalyzer/lxy')
+    tree=fIn.Get('DileptonInfo')
     for i in xrange(0,tree.GetEntriesFast()):
         tree.GetEntry(i)
 
         #select only emu events
-        #if tree.EvCat != -11*13 : continue
-        if tree.evcat != -11*13 : continue
+        if tree.EvCat != -11*13 : continue
         if not isData: 
-           #if tree.GenLpPt == 0 or tree.GenLmPt == 0: continue
-           if tree.glpt == 0: continue
+           if tree.GenLpPt == 0 or tree.GenLmPt == 0: continue
 
         #base weight: BR fix for ttbar x pileup x lepton selection x xsec weight
-        #baseWeight = tree.Weight[0]*tree.Weight[1]*tree.Weight[4] #*tree.XSWeight
+        baseWeight = tree.Weight[0]*tree.Weight[1]*tree.Weight[4] #*tree.XSWeight
                         
         #event weight
-        weight =  1
-        #weight = 1 if isData else baseWeight
+        weight = 1 if isData else baseWeight
         
         #positive lepton
         lp=ROOT.TLorentzVector()
-        #lp.SetPtEtaPhiM(tree.LpPt,tree.LpEta,tree.LpPhi,0.)
-        lp.SetPtEtaPhiM(tree.lpt,tree.leta,tree.lphi,0.)
+        lp.SetPtEtaPhiM(tree.LpPt,tree.LpEta,tree.LpPhi,0.)
         glp=ROOT.TLorentzVector()
-        #glp.SetPtEtaPhiM(tree.GenLpPt,tree.GenLpEta,tree.GenLpPhi,0.)
-        glp.SetPtEtaPhiM(tree.glpt,tree.gleta,tree.glphi,0.)
+        glp.SetPtEtaPhiM(tree.GenLpPt,tree.GenLpEta,tree.GenLpPhi,0.)
 
         #negative lepton
         lm=ROOT.TLorentzVector()
-        #lm.SetPtEtaPhiM(tree.LmPt,tree.LmEta,tree.LmPhi,0.)       
-        lm.SetPtEtaPhiM(tree.jpt,tree.jeta,tree.jphi,0.)
+        lm.SetPtEtaPhiM(tree.LmPt,tree.LmEta,tree.LmPhi,0.)       
         glm=ROOT.TLorentzVector()
-        #glm.SetPtEtaPhiM(tree.GenLmPt,tree.GenLmEta,tree.GenLmPhi,0.)
-        glm.SetPtEtaPhiM(tree.gjPt,tree.gjeta,tree.gjphi,0.)
+        glm.SetPtEtaPhiM(tree.GenLmPt,tree.GenLmEta,tree.GenLmPhi,0.)
 
         #charged lepton pair - pt
         ll=ROOT.TLorentzVector()
@@ -331,13 +292,13 @@ def createHistos(var,filename,isData,histos,q):
 
         #fill the histograms according to the distrubution variable
         #pT positive lepton
-        #if var == 'ptpos': 
-            #histos[rec].Fill(lp.Pt(),weight)
-            #binWidth = histos[wgt].GetXaxis().GetBinWidth(histos[wgt].GetXaxis().FindBin(lp.Pt() ) )
-            #histos[wgt].Fill(lp.Pt(),weight/binWidth)
-            #if not isData:
-                    #histos[gen].Fill(glp.Pt(),weight)
-                    #histos[mig].Fill(glp.Pt(),lp.Pt(),weight)
+        if var == 'ptpos': 
+            histos[rec].Fill(lp.Pt(),weight)
+            binWidth = histos[wgt].GetXaxis().GetBinWidth(histos[wgt].GetXaxis().FindBin(lp.Pt() ) )
+            histos[wgt].Fill(lp.Pt(),weight/binWidth)
+            if not isData:
+                    histos[gen].Fill(glp.Pt(),weight)
+                    histos[mig].Fill(glp.Pt(),lp.Pt(),weight)
 
         #Second distribution: Pt(l+l-) = ll.Pt      
         if var == 'ptll': 
@@ -526,27 +487,58 @@ def createSummaryTasks(opt):
 
     #get files from directory
     tasklist=[]
-    if opt.input.find('/store')>=0:
-        for filename in fillFromStore(opt.input):
-            if not os.path.splitext(filename)[1] == '.root': continue	
-            isData = True if 'Data' in filename else False
-            tasklist.append((opt.var,filename,isData,opt.output))
-    else:
-        for filename in os.listdir(args[0]):
-            if not os.path.splitext(filename)[1] == '.root': continue	
-            isData = True if 'Data' in filename else False
-            tasklist.append((opt.var,filename,isData,opt.output))
+    if opt.ma == False:
+        if opt.input.find('/store')>=0:
+            for filename in fillFromStore(opt.input):
+                if not os.path.splitext(filename)[1] == '.root': continue   
+                isData = True if 'Data' in filename else False
+                tasklist.append((opt.var,filename,isData,opt.output))
+        else:
+            for filename in os.listdir(args[0]):
+                if not os.path.splitext(filename)[1] == '.root': continue   
+                isData = True if 'Data' in filename else False
+                tasklist.append((opt.var,filename,isData,opt.output))
 
-    #loop over tasks
-    if opt.jobs>0:
-        print ' Submitting jobs in %d threads' % opt.jobs
-        import multiprocessing as MP
-        pool = MP.Pool(opt.jobs)
-        pool.map(createSummaryPacked,tasklist)
+        #loop over tasks
+        if opt.jobs>0:
+            print ' Submitting jobs in %d threads' % opt.jobs
+            import multiprocessing as MP
+            pool = MP.Pool(opt.jobs)
+            pool.map(createSummaryPacked,tasklist)
+        else:
+            for var,filename,isData,outDir in tasklist:
+                createSummary(var=var,filename=filename,isData=isData,outDir=outDir)
     else:
-        for var,filename,isData,outDir in tasklist:
-            createSummary(var=var,filename=filename,isData=isData,outDir=outDir)
-			
+        #masstrees, massfiles = getMassTrees(opt.input, verbose=True)
+        #masspoints = sorted(list(set([mass for mass,_ in masstrees.keys()])))
+    
+        # Create an array with the different masses
+        mass = [166, 169, 171, 173, 175, 178]
+
+        # A bit of hardcoding until I understand Benjamin's code
+        for m in mass:
+	    print m
+      	    m = str(m)
+            output = opt.output + m
+            os.system('mkdir -p %s' % output)
+            print 'Creating new directory'
+            for filename in fillFromStore(opt.input):
+                direct = 'root://eoscms//eos/cms/store/cmst3/group/top/summer2015/treedir_bbbcb36/ttbar/mass_scan/'
+                if not (filename == direct+'MC8TeV_SingleT_tW_'+m+'v5.root' or
+                        filename == direct+'MC8TeV_SingleT_t_'+m+'v5.root' or
+                        filename == direct+'MC8TeV_SingleTbar_tW_'+m+'v5.root' or
+                        filename == direct+'MC8TeV_SingleTbar_t_'+m+'v5.root' or
+                        filename == direct+'MC8TeV_TTJets_'+m+'v5.root' or
+                        filename == direct+'MC8TeV_TTJets_MSDecays_'+m+'v5.root'):
+                    continue
+		print 'Going to analyze %s' %filename  
+                isData = True if 'Data' in filename else False
+                tasklist.append((opt.var,filename,isData,output))
+
+            print ' Submitting jobs in %d threads for %s' % (opt.jobs,m)
+            import multiprocessing as MP
+            pool = MP.Pool(opt.jobs)
+            pool.map(createSummaryPacked,tasklist)			
 	return 0
 
 """
@@ -572,10 +564,15 @@ def main():
                           default=1,
                           type=int,
                           help='# of jobs to process in parallel the trees [default: %default]')
+        parser.add_option('--mass',
+                          dest='mass', 
+                          default=None,
+                          type=int,
+                          help='mass [default: %default]')
         parser.add_option('-m',
-                          dest='mig', 
-                          default=True,
-                          help='Create migration matrix or take it from file [default: %default]')
+                          dest='ma', 
+                          default=False,
+                          help='Take information from mass files [default: %default]')
 	parser.add_option('-o', '--output',
                           dest='output', 
                           default='unfoldResults',                                                                       
@@ -600,20 +597,10 @@ def main():
              print 80*'-'
         else:
              print 80*'-'
-             print 'Creating ROOT file with migration matrices, data and background distributions of %s from %s'%(opt.var,opt.root)
+             print 'Unfolding variable %s from %s'%(opt.var,opt.root)
              unfoldVariable(opt)
              print 80*'-'
-            #if opt.mass is None:
-	         #print 80*'-'
-           	 #print 'Unfolding variable %s from %s'%(opt.var,opt.root)
-             #unfoldVariable(opt)
-             #print 80*'-'
-            #else:
-            #print 80*'-'
-            #	print 'Creating txt file with Mellin moments of %s from %s'%(opt.var,opt.root)
-           # 	getMoments(opt)
-            #	print 80*'-'
-             return 0
+        return 0
 
 if __name__ == "__main__":
 	sys.exit(main())
