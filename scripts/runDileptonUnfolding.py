@@ -101,7 +101,7 @@ def unfoldVariable(opt):
     fIn.Close()
 
     #dump migration matrix in a root file or use that histogram as migration matrix
-    filenamem = 'unfoldResultsRebin/'+opt.var+'/plots/migration_'+opt.var+'_TTJets.root'
+    filenamem = 'results/data/'+opt.var+'/plots/migration_'+opt.var+'_TTJets.root'
     
     #dump migration matrix in a root file to test it
     #filenamem = 'results_test/ptpos/169/migration_ptpos169_SingleT.root'
@@ -143,7 +143,7 @@ def unfoldVariable(opt):
     
     # Set a "bias" distribution, i.e. your MC truth distribution
     # corresponding to what you expect to see after unfolding.
-    #tunfold.SetBias(histos['signal_gen'])
+    tunfold.SetBias(histos['signal_gen'])
 
     # Scale factor for the "bias" distribution. 
     # Choose such that normalization will correspond to expected normalization of result. 
@@ -152,8 +152,8 @@ def unfoldVariable(opt):
     scaleBias = 1.0
 
     #background subtraction
-    #bkgScale, bkgUnc = 1.0, 0.15
-    #tunfold.SubtractBackground(histos['bkg'], "bkg", bkgScale, bkgUnc)
+    bkgScale, bkgUnc = 1.0, 0.15
+    tunfold.SubtractBackground(histos['bkg'], "bkg", bkgScale, bkgUnc)
 
     # Regularization parameter, giving the strength of regularization. Will be roughly on the order of 1e-4.
     # You can determine this by performing unfolding with many different values, 
@@ -341,25 +341,21 @@ def createHistos(var,filename,isData,histos,q):
 
     # Gets quantiles from histos if q is True
     # GetQuantiles just works for TH1 not TH2, therefore h != migration
-    if q == True:
-        #print 'Getting quantiles from %s' %filename
+    if opt.quantiles:
         for h in histos:
             if h == gen:
                 q_gen=[]
                 q_gen=utils.quantiles(histos[h])
-                #print 'quantiles lenght for gen %s' %len(q_gen)
-                #for i in xrange(0,len(q_gen)): print q_gen[i]
-
-                #there should be an easier way to rebin the histograms just using the function rebin that I defined in utils.py but it doesn't seem to be working
-                #histos[h]=utils.rebin(hist,q_gen[h])
+                print 'quantiles for %s' % var
+                for i in xrange(0,len(q_gen)): print q_gen[i]            
             
-            #if h == wgt or h == rec:
-            if h == rec:    
+            if h == wgt or h == rec:
                 q_rec=[]
                 q_rec=utils.quantiles(histos[h])
                 for i in xrange(0,len(q_rec)): print q_rec[i]
 
         return q_gen,q_rec
+       
 
 """
 Create histograms, get quantiles and re run histograms
@@ -398,7 +394,7 @@ def createSummaryPacked(args):
     try:
         #labeling
         rec = var+'_rec'
-        wgt = var+'_wgt'
+        wgt = rec+'_wgt'
         gen = var+'_gen'
         mig = var+'_migration'
 
@@ -406,25 +402,28 @@ def createSummaryPacked(args):
 
         # define histograms according to the distribution variable opt.var and according to the quantiles if you've already got them
         #bins_gen=[0,20,40,60,80,100,120,140,160,180,200]
-        
         # binning defined using the quantiles
         #pT positive lepton
-        if var == 'ptpos': bins_gen=[20,24,28,32,36,40,44,48,52,60,68,76,84,92,100,120,140,160,180]
+        if var == 'ptpos': 
+              bins_gen=[20,24,28,32,36,40,44,48,52,56,61,67,75,83,91,111,131,181]
+              bins_rec=[20,22,24,26,28,30,32,34,36,38,40,42,44,48,50,52,54,56,59,61,64,67,71,75,79,83,87,91,101,111,121,131,156,181,206]
+        #bins_gen=[20,24,28,32,36,40,44,48,52,60,68,76,84,92,100,120,140,160,180]
+        #     bins_rec=[20,24,28,32,36,40,44,48,52,60,68,76,84,92,100,120,140,160,180]
    
-        #pT charged-lepton pair
-        if var == 'ptll': bins_gen=[10,20,30,36,42,48,52,56,60,65,70,75,80,85,90,100,110,130,150,198]
+        # #pT charged-lepton pair
+        # if var == 'ptll': bins_gen=[10,20,30,36,42,48,52,56,60,65,70,75,80,85,90,100,110,130,150,198]
 
-        #M charged-lepton pair
-        if var == 'mll': bins_gen=[20,30,40,48,56,68,74,80,86,93,100,115,130,145,165,195,235,275,375]
+        # #M charged-lepton pair
+        # if var == 'mll': bins_gen=[20,30,40,48,56,68,74,80,86,93,100,115,130,145,165,195,235,275,375]
    
-        #Scalar sum of E
-        if var == 'EposEm': bins_gen=[55,75,87,99,111,122,131,140,149,160,170,180,190,205,225,250,275,375,475]
+        # #Scalar sum of E
+        # if var == 'EposEm': bins_gen=[55,75,87,99,111,122,131,140,149,160,170,180,190,205,225,250,275,375,475]
 
-        #Scalar sum of Pt        
-        if var == 'ptposptm': bins_gen=[40,56,64,72,80,88,96,102,107,113,119,127,137,147,163,187,205,235,250]
+        # #Scalar sum of Pt        
+        # if var == 'ptposptm': bins_gen=[40,56,64,72,80,88,96,102,107,113,119,127,137,147,163,187,205,235,250]
 
         # define bins_rec using bins_gen 
-        bins_rec=bins_gen
+        #bins_rec=bins_gen
         #bins_rec=[]
         #for i in xrange(0,len(bins_gen)):
         #        bins_rec.append(bins_gen[i]+0.5)
@@ -433,24 +432,30 @@ def createSummaryPacked(args):
         #        else:
         #                bins_rec.append(bins_gen[-1]+50)
 
-        # this wraps it up and get histograms rebinned with the quantiles respectively
+        # # this wraps it up and get histograms rebinned with the quantiles respectively
 
-        # analysis of just one file
+        if var == 'ptpos': 
+            title = ';p_{T}(l^{+}) [GeV];Events'
+            title_mig = ';Reconstructed p_{T}(l^{+}) [GeV];Generated p_{T}(l^{+}) [GeV];Events'
+        # # analysis of just one file
         '''
         if 'Data8TeV_MuEG2012A' in filename: 
             
             #define histograms
             histos={}
-            histos[rec]=ROOT.TH1F(rec,'test',100,0,200)
-            histos[wgt]=ROOT.TH1F(wgt,'test',100,0,200)
-            histos[gen]=ROOT.TH1F(gen,'test',100,0,200)
-            histos[mig]=ROOT.TH2F(mig,'test',100,0,200,100,0,200)
+            #histos[rec]=ROOT.TH1F(rec,'test',100,0,200)
+            #histos[wgt]=ROOT.TH1F(wgt,'test',100,0,200)
+            #histos[gen]=ROOT.TH1F(gen,'test',100,0,200)
+            #histos[mig]=ROOT.TH2F(mig,'test',100,0,200,100,0,200)
+            histos[rec]=ROOT.TH1F(rec,title,len(bins_rec)-1,array('d',bins_rec))
+            histos[wgt]=ROOT.TH1F(wgt,title,len(bins_rec)-1,array('d',bins_rec))
+            histos[gen]=ROOT.TH1F(gen,title,len(bins_gen)-1,array('d',bins_gen))
+            histos[mig]=ROOT.TH2F(mig,title_mig,len(bins_gen)-1,array('d',bins_gen),len(bins_rec)-1,array('d',bins_rec))
 
             #get quantiles arrays bins_gen_b and bins_rec_b
             q = True
             bins_gen_b,bins_rec_b=createHistos(var,filename,isData,histos,q)
-            print 'lenght %s' %len(bins_rec_b)
-            #for i in xrange(0,len(bins_rec_b)): print bins_rec_b[i]
+            for i in xrange(0,len(bins_rec_b)): print bins_rec_b[i]
 
             #dump histograms just for this file in the outDir
             fOut=ROOT.TFile.Open(os.path.join(outDir,os.path.basename(filename)),'RECREATE')
@@ -462,6 +467,7 @@ def createSummaryPacked(args):
         #'''
         #define histograms
         binhistos = getAnalysisHistograms(var,bins_gen,bins_rec)
+        
         q = False
 
         #filling histograms with new binning
@@ -487,7 +493,7 @@ def createSummaryTasks(opt):
 
     #get files from directory
     tasklist=[]
-    if opt.ma == False:
+    if opt.ma == 'f':
         if opt.input.find('/store')>=0:
             for filename in fillFromStore(opt.input):
                 if not os.path.splitext(filename)[1] == '.root': continue   
@@ -571,7 +577,7 @@ def main():
                           help='mass [default: %default]')
         parser.add_option('-m',
                           dest='ma', 
-                          default=False,
+                          default='f',
                           help='Take information from mass files [default: %default]')
 	parser.add_option('-o', '--output',
                           dest='output', 
