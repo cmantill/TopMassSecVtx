@@ -45,9 +45,6 @@ def getStability(root,v,m):
             histos['rec']=h.Clone('rec')
         else : 
             histos['rec'].Add(h)
-        #else:
-        #    if not 'bkg' in histos : histos['bkg']=h.Clone('bkg')
-        #    else : histos['bkg'].Add(h)
 
     migrationList = getPathToObjects(fIn.Get('%s_migration'%(var)))
     for p in migrationList:
@@ -59,31 +56,11 @@ def getStability(root,v,m):
         else :
             histos['mig'].Add(h)
 
+    #pT positive lepton
     if var == 'ptpos': 
-      bins_gen=[20,24,28,32,36,40,44,48,52,56,61,67,75,83,91,111,131]
-      bins_rec=[20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50,52,54,56,59,61,64,67,71,75,79,83,87,91,101,111,121,131,156,181,206]
-
-    #pT charged-lepton pair
-    if var == 'ptll': 
-      bins_gen=[8,20,30,37,43,50,57,62,68,76,82,90,96,114,124,136,166]
-      bins_rec=[8,15,20,25,30,33.5,37,40,43,47,50,53.5,57,59.5,62,65,68,72,76,79,82,86,90,93,96,103,114,119,124,130,136,150,166,180,198]
-
-    #M charged-lepton pair
-    if var == 'mll': 
-      bins_gen=[20,41,49,56,62,69,75,81,87,95,102,110,118,126,135,146,163,188,225]
-      bins_rec=[20,30,41,45,49,52,56,59,62,66,69,72,75,78,81,84,87,91,95,99,102,106,110,114,118,122,126,131.5,135,137.5,146,155,163,172,188,200,225,250,300]
-
-    #Scalar sum of E
-    if var == 'EposEm': 
-      bins_gen=[50,86,99,112,120,127,134,142,151,160,169,181,190,205,225,250,271,301,350]
-      bins_rec=[50,68,86,92,99,105,112,116,120,123.5,127,130.5,134,138,142,148,151,155.5,160,164.5,169,175,181,185.5,190,197.5,205,215,225,237.5,250,258,268,282,301,325,350,400,450]
-
-    #Scalar sum of Pt        
-    if var == 'ptposptm': 
-      bins_gen=[46,56,64,72,80,88,96,102,107,113,119,127,137,147,163,187,223,275]
-      bins_rec=[46,51,56,60,64,68,72,76,80,84,88,90,96,99,102,104.5,107,110,113,116,119,123,127,132,137,142,147,155,163,175,187,201,223,235,250,275,300,350]
-
-   
+      bins_gen = [22.72,25.45,28.18,30.92,33.67,36.42,39.17,42.01,44.89,47.77,50.94,55.06,59.19,63.63,68.15,74.76,83.59,95,115.65]
+      bins_rec = [20,21.36,22.73,24.09,25.45,26.82,28.18,29.55,30.92,32.29,33.67,35.04,36.41,37.79,39.17,40.57,42.01,43.45,44.89,46.33,47.77,49.21,50.93,53,55.06,57.12,59.18,61.37,63.63,65.89,68.15,70.73,74.76,78.74,83.59,88.75,95,102.85,115.65,138.46,250]
+      
     title_p = ';p_{T}(l^{+}) [GeV];Purity'
     title_s = ';p_{T}(l^{+}) [GeV];Stability'
     title_e = ';p_{T}(l^{+}) [GeV];Efficiency'
@@ -98,104 +75,184 @@ def getStability(root,v,m):
     #Ngen_tot = histos['gen'].Integral(1,nbins_gen)
     #Nrec_tot = histos['rec'].Integral(1,nbins_rec)
     #print 'gen %4.6f'%(Ngen_tot)
-   
-    for i in xrange(1,nbins_gen):
 
+    # Just to check, three different ways to get the total events in hist['mig']
+    #tot = histos['mig'].ProjectionY("test",1,nbins_gen,"e").Integral(1,nbins_rec)
+    #tot1 = histos['mig'].Integral(1,nbins_gen,1,nbins_rec)
+    #tot2 = histos['mig'].Integral()
+
+    for i in xrange(1,len(bins_gen)):
+
+        # Purity: # of events generated and correctly reconstructed in a given bin i relative to the # of events that are reconstructed in bin 
+        # i but generated anywhere
+      
         Nrec_gen = histos['mig'].Integral(i,i+1,2*i-1,2*i+1)
         Nrec = histos['mig'].Integral(1,nbins_gen,2*i-1,2*i+1)
+        if Nrec != 0: 
+          pur = Nrec_gen/Nrec
+          histos['Purity'].SetBinContent(i,pur)
+
+        ##  New definitions of efficiency, stability and purity
+        ## Purity
+        #Nrec_i = histos['rec'].GetBinContent(2*i+1) + histos['rec'].GetBinContent(2*i)
+        Nrec_gen_i = histos['mig'].ProjectionY("test",i,i+1,"e").Integral(2*i,2*i+1)
+        #pur2 = Nrec_gen_i/Nrec_i
+        #histos['Purity'].SetBinContent(i,pur2)
 
         Ngen = histos['mig'].Integral(i,i+1,1,nbins_rec)
         Ngen_tot_mig = histos['mig'].Integral(1,nbins_gen,1,nbins_rec)
 
-        print i,i+1,2*i-1,2*i+1
-        print 'Nrec_gen %4.6f Nrec %4.6f Ngen %4.6f'%(Nrec_gen,Nrec,Ngen)
-        print Ngen_tot_mig
+        #if Ngen != 0: 
+        #  stab = Nrec_gen/Ngen
+        #  histos['Stability'].SetBinContent(i,stab)
 
-        if Nrec != 0: 
-          pur = Nrec_gen/Nrec
-          histos['Purity'].SetBinContent(i,pur)
-        if Ngen != 0: 
-          stab = Nrec_gen/Ngen
-          histos['Stability'].SetBinContent(i,stab)
+        #eff = Ngen/Ngen_tot_mig
+        #histos['Efficiency'].SetBinContent(i,eff)
 
-        eff = Ngen/Ngen_tot_mig
-        histos['Efficiency'].SetBinContent(i,eff)
+        Ngen_i = histos['gen'].GetBinContent(i)
+        Ngen_rec_i = histos['mig'].ProjectionX("test2",2*i,2*i+1,"e").Integral()
+
+        stab2 = Nrec_gen_i/Ngen_i
+        histos['Stability'].SetBinContent(i,stab2)
+
+        #eff = Nrec_gen_i/histos['rec'].Integral()
+        histos['Efficiency'].SetBinContent(i, Nrec_gen_i)
+         
+    scale = 1.0/ histos['Efficiency'].Integral()
+    histos['Efficiency'].Scale(scale)
+
+    #norm = 1.0
+    #scale = 10/histos['Efficiency'].Integral()
+    #print histos['Efficiency'].GetBinContent(20)
+    #print histos['Efficiency'].GetXaxis().GetBinWidth(20)
+    #print histos['Efficiency'].Integral()
+    #scale = histos['Efficiency'].GetXaxis().GetBinWidth(1)/ histos['Efficiency'].Integral()
+    #print scale
+    #histos['Efficiency'].Scale(scale)
 
     #dump histograms in a file\
-    filename = 'results/mc/%s/%s/plots.root'%(var,m)
+    filename = 'quantiles/mc/%s/%s/plots.root'%(var,m)
     fOut=ROOT.TFile.Open(filename,'RECREATE')
     for h in histos: histos[h].Write()
     print 'Histograms saved in %s' % fOut.GetName()
     fOut.Close()
 
+    # Convert histograms to TGraphErrors
+    graphs ={}
+
+    graphs['Purity'] = ROOT.TGraphErrors(histos['Purity'])
+    graphs['Efficiency'] = ROOT.TGraphErrors(histos['Efficiency'])
+    graphs['Stability'] = ROOT.TGraphErrors(histos['Stability'])
+   
     # Save histograms in canvas
 
-    for h in histos:
-      if h == 'Purity' or h =='Stability' or h == 'Efficiency':
-          gStyle.SetOptStat(0)
-          gStyle.SetOptTitle(0)
+    gStyle.SetOptStat(0)
+    gStyle.SetOptTitle(0)
 
-          outputName = 'results/mc/'+var+'/'+m + '/'+m +'_' +h
 
-          #Create a canvas for plotting your graph
-          c = ROOT.TCanvas('c','c')
-          gStyle.SetCanvasDefH(600);
-          gStyle.SetCanvasDefW(800);
-          c.SetLeftMargin(0.15);
-          c.SetRightMargin(0.25)
-          c.SetBottomMargin(0.25);
-          p1=ROOT.TPad('p1','p1',0.,0.,1.0,1.0)
-          p1.Draw()
+    outputName = 'quantiles/mc/'+var+'/'+m + '/'+m +'_pur_stab_eff'
 
-          #Create CMS labels
-          tlat1 = TLatex()
-          tlat1.SetNDC()
-          tlat1.SetTextFont(42)
-          tlat1.SetTextSize(0.04)
-          tlat1.SetTextAlign(31)
-          tlat1.DrawLatex(0.16, 0.91,'#bf{CMS}')
+    #Create a canvas for plotting your graph
+    c = ROOT.TCanvas('c','c')
+    gStyle.SetCanvasDefH(600);
+    gStyle.SetCanvasDefW(800);
+    c.SetLeftMargin(0.15);
+    c.SetRightMargin(0.25)
+    c.SetBottomMargin(0.25);
+    p1=ROOT.TPad('p1','p1',0.,0.,1.0,1.0)
+    p1.Draw()
 
-          tlat2 = TLatex()
-          tlat2.SetNDC()
-          tlat2.SetTextFont(42)
-          tlat2.SetTextSize(0.04)
-          tlat2.SetTextAlign(31)
-          tlat2.DrawLatex(0.30, 0.91, '#it{Simulation}')
-          #tlat2.DrawLatex(0.38, 0.91, '#it{Simulation}')
-          #tlat2.DrawLatex(0.81, 0.91, '19.7 fb^{-1}')
-          #tlat2.DrawLatex(0.90, 0.91,'(8 TeV)')
-          tlat2.DrawLatex(0.90, 0.91,'8 TeV')
+    #Create CMS labels
+    tlat1 = TLatex()
+    tlat1.SetNDC()
+    tlat1.SetTextFont(42)
+    tlat1.SetTextSize(0.04)
+    tlat1.SetTextAlign(31)
+    tlat1.DrawLatex(0.16, 0.91,'#bf{CMS}')
 
-          #pT positive lepton
-          if var == 'ptpos': title = 'p_{T}(l^{+}) [GeV]'
+    tlat2 = TLatex()
+    tlat2.SetNDC()
+    tlat2.SetTextFont(42)
+    tlat2.SetTextSize(0.04)
+    tlat2.SetTextAlign(31)
+    tlat2.DrawLatex(0.30, 0.91, '#it{Simulation}')
+    #tlat2.DrawLatex(0.38, 0.91, '#it{Simulation}')
+    #tlat2.DrawLatex(0.81, 0.91, '19.7 fb^{-1}')
+    #tlat2.DrawLatex(0.90, 0.91,'(8 TeV)')
+    tlat2.DrawLatex(0.90, 0.91,'8 TeV')
+
+    tleg = ROOT.TLegend(0.70, 0.75, .89, 0.89)
+    tleg.SetBorderSize(0)
+    tleg.SetFillColor(0)
+    tleg.SetFillStyle(0)
+    tleg.SetShadowColor(0)
+    tleg.SetTextFont(43)
+    tleg.SetTextSize(20)
+
+    #pT positive lepton
+    if var == 'ptpos': title = 'p_{T}(l^{+}) [GeV]'
+
+    #pT charged-lepton pair
+    if var == 'ptll': title = 'p_{T}(l^{+}l^{-}) [GeV]'
+
+    #M charged-lepton pair
+    if var == 'mll': title = 'M(l^{+}l^{-}) [GeV]'
       
-          #pT charged-lepton pair
-          if var == 'ptll': title = 'p_{T}(l^{+}l^{-}) [GeV]'
+    #Scalar sum of E
+    if var == 'EposEm': title = 'E(l^{+})+E(l^{-}) [GeV]'
+     
+    #Scalar sum of Pt
+    if var == 'ptposptm': title = 'p_{T}(l^{+})+p_{T}(l^{-}) [GeV]'
 
-          #M charged-lepton pair
-          if var == 'mll': title = 'M(l^{+}l^{-}) [GeV]'
-            
-          #Scalar sum of E
-          if var == 'EposEm': title = 'E(l^{+})+E(l^{-}) [GeV]'
-           
-          #Scalar sum of Pt
-          if var == 'ptposptm': title = 'p_{T}(l^{+})+p_{T}(l^{-}) [GeV]'
+    p1.cd()
+    graphs['Purity'].SetTitle("")
+    graphs['Purity'].SetLineColor(kBlue-3)
+    graphs['Purity'].SetLineStyle(1)
+    graphs['Purity'].SetLineWidth(1)
+    graphs['Purity'].SetMarkerStyle(8)
+    graphs['Purity'].SetMarkerColor(kBlue-3)
+    graphs['Purity'].SetMarkerSize(0.9)
+    graphs['Purity'].SetMaximum(1.1)
+    graphs['Purity'].SetMinimum(0.0)
+    graphs['Purity'].GetXaxis().SetLabelSize(0.037)
+    graphs['Purity'].GetYaxis().SetTitleOffset(1.2)
+    graphs['Purity'].GetYaxis().SetTitleSize(0.037)
+    graphs['Purity'].GetYaxis().SetLabelSize(0.037)
+    graphs['Purity'].GetXaxis().SetTitle(title)
+    graphs['Purity'].GetYaxis().SetTitle()
+    for i in xrange(0,len(bins_gen)-1):
+      errx = graphs['Purity'].GetErrorX(i)
+      graphs['Purity'].SetPointError(i,errx,0)
+    graphs['Purity'].Draw("Ap")
+    tleg.AddEntry(graphs['Purity'], 'Purity', 'pl')
 
-          p1.cd()
-          histos[h].SetTitle("")
-          histos[h].SetLineColor(kBlack)
-          histos[h].SetLineStyle(1)
-          histos[h].GetXaxis().SetLabelSize(0.037)
-          histos[h].GetYaxis().SetTitleOffset(1.2)
-          histos[h].GetYaxis().SetTitleSize(0.037)
-          histos[h].GetYaxis().SetLabelSize(0.037)
-          histos[h].GetXaxis().SetTitle(title)
-          histos[h].GetYaxis().SetTitle(h)
-          histos[h].Draw("][")
+    graphs['Efficiency'].SetMarkerStyle(23)
+    graphs['Efficiency'].SetMarkerColor(kGreen-3)
+    graphs['Efficiency'].SetMarkerSize(0.9)
+    graphs['Efficiency'].SetLineColor(kGreen-3)    
+    graphs['Efficiency'].SetLineWidth(1)
+    for i in xrange(0,len(bins_gen)-1):
+      errx = graphs['Efficiency'].GetErrorX(i)
+      graphs['Efficiency'].SetPointError(i,errx,0)
+    graphs['Efficiency'].Draw("Samep")
+    tleg.AddEntry(graphs['Efficiency'], 'Efficiency', 'pl')
 
-          for ext in ['png','pdf']:
-            c.SaveAs('%s.%s'%(outputName,ext))
-          del c
+    graphs['Stability'].SetMarkerStyle(21)
+    graphs['Stability'].SetMarkerColor(kRed)
+    graphs['Stability'].SetMarkerSize(0.9)
+    graphs['Stability'].SetLineColor(kRed)    
+    graphs['Stability'].SetLineWidth(1)
+    for i in xrange(0,len(bins_gen)-1):
+      errx = graphs['Stability'].GetErrorX(i)
+      graphs['Stability'].SetPointError(i,errx,0)
+    graphs['Stability'].Draw("Samep")
+    tleg.AddEntry(graphs['Stability'], 'Stability', 'pl')
+
+    tleg.Draw()
+
+    for ext in ['png','pdf']:
+      c.SaveAs('%s.%s'%(outputName,ext))
+    del c
 
 
 """
@@ -212,26 +269,24 @@ def getMoments(root,v,moments,m):
     #unfolded histograms generated level
     if moments == 'unf':
       unfolded       = getPathToObjects(fIn.Get('%s_unfolded'%var))
-      key = 'data'
+      key = 'unf'
       for p in unfolded:
          h=fIn.Get(p)
          hname=h.GetName()
-         if 'data' in hname : 
-             histos['data'] = h.Clone('data')
-         else:
-             histos['signal'] = h.Clone('signal')
-
+         if 'data_unfolded' in hname : 
+             histos['unf'] = h.Clone('data_unfolded')   
+ 
     if moments == 'gen':
       genList       = getPathToObjects(fIn.Get('%s_gen'%(var)))
-      key = 'signal_gen'
+      key = 'gen'
       for p in genList:
           h=fIn.Get(p)
           hname=h.GetName()
           if 'TTJets' in hname:
               if not 'signal_gen' in histos : 
-                  histos['signal_gen']=h.Clone('signal_gen')
+                  histos['gen']=h.Clone('gen')
               else : 
-                  histos['signal_gen'].Add(h)
+                  histos['gen'].Add(h)
 
     if moments == 'rec':
       recList       = getPathToObjects(fIn.Get('%s_rec'%(var)))
@@ -258,7 +313,7 @@ def getMoments(root,v,moments,m):
     meanerr = histos[key].GetMeanError()
     rms = histos[key].GetRMS()
     rmserr = histos[key].GetRMSError()
-    
+
     u0 = 1
     u1 = mean
     u1err = meanerr
@@ -266,7 +321,7 @@ def getMoments(root,v,moments,m):
     u2err = sqrt((2*rms*rmserr)**2+(2*mean*meanerr)**2)
 
     #Create a text file with the three different moments for the corresponding mass
-    outfileName = 'results/mc/'+var+'/moments_' + var + '_' + moments +'.txt'
+    outfileName = 'quantiles/mc/'+var+'/moments_' + var + '_' + moments +'.txt'
     m = float(m)
     mass = m + 0.5
     outfile = open(outfileName,'a')
@@ -286,11 +341,12 @@ def compareMass(compare,v):
     #Open root file containing histograms
     masspoints = [166,169,171,173,175,178]
 
-    outDir = 'results/mc/%s'%var
+    outDir = 'quantiles/mc/%s'%var
 
     histos = {}
 
-    filename_nominal = 'results/data/%s/plots/plotter.root'%(var)
+    filename_nominal = 'quantiles/data/%s/plots/plotter.root'%(var)
+    #filename_nominal = 'results/data/%s/plots/plotter.root'%(var)
     #filename_nominal = 'results/data/%s/plots/%s_unfolded.root'%(var,var)
     
     fIn_n=ROOT.TFile.Open(filename_nominal)
@@ -321,7 +377,8 @@ def compareMass(compare,v):
     for m in masspoints:
 
         # Open plotter.root for each of the mass files which contains all of the histograms
-        filename = 'results/mc/%s/%d/plots/plotter.root'%(var,m)
+        #filename = 'results/mc/%s/%d/plots/plotter.root'%(var,m)
+        filename = 'quantiles/mc/%s/%d/plots/plotter.root'%(var,m)
 
         m = str(m)
 
@@ -389,8 +446,11 @@ def compareMass(compare,v):
 def graphMass(v):
 
      var = str(v)
-     filename = 'results/mc/'+var+'/moments_'+var+'_unf.txt'
-     filename_gen = 'results/mc/'+var+'/moments_'+var+'_gen.txt'
+     #filename = 'results/mc/'+var+'/moments_'+var+'_unf.txt'
+     #filename_gen = 'results/mc/'+var+'/moments_'+var+'_gen.txt'
+     filename = 'quantiles/mc/'+var+'/moments_'+var+'_unf.txt'
+     filename_gen = 'quantiles/mc/'+var+'/moments_'+var+'_gen.txt'
+     filename_rec = 'quantiles/mc/'+var+'/moments_'+var+'_rec.txt'
 
      #pT positive lepton
      if var == 'ptpos': title = 'p_{T}(l^{+})'
@@ -407,8 +467,9 @@ def graphMass(v):
      #Scalar sum of Pt
      if var == 'ptposptm': title = 'p_{T}(l^{+})+p_{T}(l^{-})'
 
-     m_rec,u0_rec,u1_rec,erru1_rec,u2_rec,erru2_rec = numpy.loadtxt(filename,unpack =True)
+     m_unf,u0_unf,u1_unf,erru1_unf,u2_unf,erru2_unf = numpy.loadtxt(filename,unpack =True)
      m_gen,u0_gen,u1_gen,erru1_gen,u2_gen,erru2_gen = numpy.loadtxt(filename_gen,unpack =True)
+     m_rec,u0_rec,u1_rec,erru1_rec,u2_rec,erru2_rec = numpy.loadtxt(filename_rec,unpack =True)
 
      mass_rec = array('d', m_rec)
      u0_rec = array('d', u0_rec)
@@ -426,22 +487,36 @@ def graphMass(v):
      u2_gen = array('d', u2_gen)
      erru2_gen = array('d', erru2_gen)
 
+     mass_unf= array('d', m_unf)
+     u0_unf = array('d', u0_unf)
+     e0_unf = array('d', [0.0]*len(mass_unf))
+     u1_unf = array('d', u1_unf)
+     erru1_unf = array('d', erru1_unf)
+     u2_unf = array('d', u2_unf)
+     erru2_unf = array('d', erru2_unf)
+
      graphs = {}
 
-     graphs['u1_'+var+'_unf'] = ROOT.TGraphErrors(len(mass_rec),mass_rec,u1_rec,e0_rec,erru1_rec)
-     graphs['u2_'+var+'_unf'] = ROOT.TGraphErrors(len(mass_rec),mass_rec,u2_rec,e0_rec,erru2_rec)
+     graphs['u1_'+var+'_unf'] = ROOT.TGraphErrors(len(mass_unf),mass_unf,u1_unf,e0_unf,erru1_unf)
+     graphs['u2_'+var+'_unf'] = ROOT.TGraphErrors(len(mass_unf),mass_unf,u2_unf,e0_unf,erru2_unf)
+
+     graphs['u1_'+var+'_rec'] = ROOT.TGraphErrors(len(mass_rec),mass_rec,u1_rec,e0_rec,erru1_rec)
+     graphs['u2_'+var+'_rec'] = ROOT.TGraphErrors(len(mass_rec),mass_rec,u2_rec,e0_rec,erru2_rec)
 
      graphs['u1_'+var+'_gen'] = ROOT.TGraphErrors(len(mass_gen),mass_gen,u1_gen,e0_gen,erru1_gen)
      graphs['u2_'+var+'_gen'] = ROOT.TGraphErrors(len(mass_gen),mass_gen,u2_gen,e0_gen,erru2_gen)
 
-     graphs['u1_'+var] = ROOT.TGraphErrors(len(u1_rec),u1_rec,u1_gen,erru1_rec,erru1_gen)
-     graphs['u2_'+var] = ROOT.TGraphErrors(len(u2_rec),u2_rec,u2_gen,erru2_rec,erru2_gen)
+     graphs['u1_'+var] = ROOT.TGraphErrors(len(u1_unf),u1_unf,u1_gen,erru1_unf,erru1_gen)
+     graphs['u2_'+var] = ROOT.TGraphErrors(len(u2_unf),u2_unf,u2_gen,erru2_unf,erru2_gen)
+
+     graphs['u1_'+var+'_r'] = ROOT.TGraphErrors(len(u1_rec),u1_rec,u1_gen,erru1_rec,erru1_gen)
+     graphs['u2_'+var+'_r'] = ROOT.TGraphErrors(len(u2_rec),u2_rec,u2_gen,erru2_rec,erru2_gen)
 
      for g in graphs:
           gStyle.SetOptStat(0)
           gStyle.SetOptTitle(0)
 
-          outputName = 'results/mc/'+var+'/'+g
+          outputName = 'quantiles/mc/'+var+'/'+g
           
           #Create a canvas for plotting your graph
           c = ROOT.TCanvas(g,g)
@@ -493,6 +568,10 @@ def graphMass(v):
                graphs[g].GetXaxis().SetTitle("Top Mass [GeV]")
                graphs[g].GetYaxis().SetTitle("Generated level #mu^{(1)}_{%s} [GeV]"%title)
                tleg.AddEntry(graphs[g], '#mu^{(1)}_{%s}'%title, 'pl')
+          if g == 'u1_'+var+'_rec':
+               graphs[g].GetXaxis().SetTitle("Top Mass [GeV]")
+               graphs[g].GetYaxis().SetTitle("Reconstructed level #mu^{(1)}_{%s} [GeV]"%title)
+               tleg.AddEntry(graphs[g], '#mu^{(1)}_{%s}'%title, 'pl')
           if g == 'u2_'+var+'_unf':
                graphs[g].GetXaxis().SetTitle("Top Mass [GeV]")
                graphs[g].GetYaxis().SetTitle("Unfolded #mu^{(2)}_{%s} [GeV^{2}]"%title)
@@ -501,13 +580,25 @@ def graphMass(v):
                graphs[g].GetXaxis().SetTitle("Top Mass [GeV]")
                graphs[g].GetYaxis().SetTitle("Generated level #mu^{(2)}_{%s} [GeV^{2}]"%title)
                tleg.AddEntry(graphs[g], '#mu^{(2)}_{%s}'%title, 'pl')
+          if g == 'u2_'+var+'_rec':
+               graphs[g].GetXaxis().SetTitle("Top Mass [GeV]")
+               graphs[g].GetYaxis().SetTitle("Reconstructed level #mu^{(2)}_{%s} [GeV^{2}]"%title)
+               tleg.AddEntry(graphs[g], '#mu^{(2)}_{%s}'%title, 'pl')
           if g == 'u1_'+var:
-               graphs[g].GetXaxis().SetTitle("Generated level #mu^{(1)}_{%s} [GeV]"%title)
-               graphs[g].GetYaxis().SetTitle("Unfolded #mu^{(1)}_{%s} [GeV]"%title)
+               graphs[g].GetYaxis().SetTitle("Generated level #mu^{(1)}_{%s} [GeV]"%title)
+               graphs[g].GetXaxis().SetTitle("Unfolded #mu^{(1)}_{%s} [GeV]"%title)
+               tleg.AddEntry(graphs[g], '#mu^{(1)}_{%s}'%title, 'pl')
+          if g == 'u1_'+var+'_r':
+               graphs[g].GetYaxis().SetTitle("Generated level #mu^{(1)}_{%s} [GeV]"%title)
+               graphs[g].GetXaxis().SetTitle("Reconstructed #mu^{(1)}_{%s} [GeV]"%title)
                tleg.AddEntry(graphs[g], '#mu^{(1)}_{%s}'%title, 'pl')
           if g == 'u2_'+var:
-               graphs[g].GetXaxis().SetTitle("Generated level #mu^{(2)}_{%s} [GeV^{2}]"%title)
-               graphs[g].GetYaxis().SetTitle("Unfolded #mu^{(2)}_{%s} [GeV^{2}]"%title)
+               graphs[g].GetYaxis().SetTitle("Generated level #mu^{(2)}_{%s} [GeV^{2}]"%title)
+               graphs[g].GetXaxis().SetTitle("Unfolded #mu^{(2)}_{%s} [GeV^{2}]"%title)
+               tleg.AddEntry(graphs[g], '#mu^{(2)}_{%s}'%title, 'pl')
+          if g == 'u2_'+var+ '_r':
+               graphs[g].GetYaxis().SetTitle("Generated level #mu^{(2)}_{%s} [GeV^{2}]"%title)
+               graphs[g].GetXaxis().SetTitle("Reconstructed #mu^{(2)}_{%s} [GeV^{2}]"%title)
                tleg.AddEntry(graphs[g], '#mu^{(2)}_{%s}'%title, 'pl')
           graphs[g].GetXaxis().SetTitleSize(0.037)
           graphs[g].GetXaxis().SetLabelSize(0.037)
@@ -552,15 +643,16 @@ def graphMass(v):
 
 def plotter(opt):
 
-     #var = ['ptpos']
-     var = ['ptpos','ptll','mll','EposEm','ptposptm']
+     var = ['ptpos']
+     #var = ['ptpos','ptll','mll','EposEm','ptposptm']
 
      for v in var:
 
-      #os.system("python scripts/runDileptonUnfolding.py -i /store/cmst3/group/top/summer2015/treedir_bbbcb36/ttbar/mass_scan -o results/mc/%s/ --jobs 8 -m True -v %s"%(v,v))
+      #os.system("python scripts/runDileptonUnfolding.py -i /store/cmst3/group/top/summer2015/treedir_bbbcb36/ttbar/mass_scan -o quantiles/mc/%s/ --jobs 8 -m True -v %s"%(v,v))
            
       # Create an array with the different masses
-      mass = [166, 169, 171, 173, 175, 178]
+      mass = [166,169,171,173,175,178]
+      #mass = [166]
            
       opt.var = v
       
@@ -568,17 +660,19 @@ def plotter(opt):
         m = str(m)
 
         # Get all the plots
-        os.system("python scripts/runPlotter.py -j test/topss2014/mass_scan_samples.json -o results/mc/%s/%s/plots results/mc/%s/%s"%(v,m,v,m))
-        os.system("python scripts/runDileptonUnfolding.py -r results/mc/%s/%s/plots/plotter.root -v %s -o results/mc/%s/%s"%(v,m,v,v,m)) 
+        #os.system("python scripts/runPlotter.py -j test/topss2014/mass_scan_samples.json -o results/mc/%s/%s/plots results/mc/%s/%s"%(v,m,v,m))
+        #os.system("python scripts/runDileptonUnfolding.py -r results/mc/%s/%s/plots/plotter.root -v %s -o results/mc/%s/%s"%(v,m,v,v,m)) 
+        os.system("python scripts/runPlotter.py -j test/topss2014/mass_scan_samples.json -o quantiles/mc/%s/%s/plots quantiles/mc/%s/%s"%(v,m,v,m))
+        os.system("python scripts/runDileptonUnfolding.py -r quantiles/mc/%s/%s/plots/plotter.root -v %s -o quantiles/mc/%s/%s"%(v,m,v,v,m)) 
 
-        moments = ['unf','gen','rec']
+        root = 'quantiles/mc/%s/%s/plots/%s_unfolded.root'%(v,m,v)
+        getMoments(root,v,'unf',m)
+        root = 'quantiles/mc/%s/%s/plots/plotter.root'%(v,m)
+        getMoments(root,v,'rec',m)
+        getMoments(root,v,'gen',m)
 
-        for mo in moments:
-          if mo == 'unf': root = 'results/mc/%s/%s/plots/%s_unfolded.root'%(v,m,v)
-          if mo == 'gen' or mo == 'rec': root = 'results/mc/%s/%s/plots/plotter.root'%(v,m)
-          getMoments(root,v,mo,m)
-
-        root = 'results/mc/%s/%s/plots/plotter.root'%(v,m)
+        #root = 'results/mc/%s/%s/plots/plotter.root'%(v,m)
+        root = 'quantiles/mc/%s/%s/plots/plotter.root'%(v,m)
 
         getStability(root,v,m)
 
