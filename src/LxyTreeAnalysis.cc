@@ -1061,6 +1061,7 @@ void LxyTreeAnalysis::BookDileptonTree()
     fDileptonInfoTree->Branch("NJets",     &fTNJets,     "NJets/I");
     fDileptonInfoTree->Branch("MET",       &fTMET,       "MET/F");
     fDileptonInfoTree->Branch("NPVtx",     &fTNPVtx,     "NPVtx/I");
+    fDileptonInfoTree->Branch("JPt",       &fTJPt,       "JPt/F");
     fDileptonInfoTree->Branch("LpPt",      &fLpPt,     "LpPt/F");
     // Lepton Energy Scale Up and Down
     fDileptonInfoTree->Branch("LpPt_sf",   fLpPt_sf,   "LpPt_sf[2]/F");
@@ -1087,6 +1088,7 @@ void LxyTreeAnalysis::BookDileptonTree()
 
 void LxyTreeAnalysis::ResetDileptonTree()
 {
+    fTJPt=0;
     fLpPt=0;
     fLpPt_sf[0]=0;
     fLpPt_sf[1]=0;
@@ -1585,12 +1587,12 @@ void LxyTreeAnalysis::analyze() {
                 if(lpt[pidx]<=0) continue;
                 float lesf(1.0);
                 int varSign( ivar==0 ? -1 : 1 );
-                float lesUnc(0.05);
+                float lesUnc(0.002);
                 if(abs(lid[pidx])==11) lesUnc=utils::cmssw::getElectronEnergyScale(lpt[pidx],leta[pidx]);
                 lesf=(1.0+varSign*lesUnc);
                 lpPt_sf[ivar]=lesf*lpt[pidx];
 
-                lesUnc = 0.05;
+                lesUnc = 0.002;
 
                 // LmPt
                 if(lpt[midx]<=0) continue;
@@ -1599,6 +1601,7 @@ void LxyTreeAnalysis::analyze() {
                 lmPt_sf[ivar]=lesf*lpt[midx];
             }
 
+            //fTJPt = jpt[midx];
             //
             fLmPt=lpt[midx];
             fLmPt_sf[0] = lmPt_sf[0];
@@ -1622,7 +1625,7 @@ void LxyTreeAnalysis::analyze() {
             fGenLpPt=glpt[pidx];
             fGenLpEta=gleta[pidx];
             fGenLpPhi=glphi[pidx];
-            fGenLmId=glid[pidx];
+            fGenLpId=glid[pidx];
             fDileptonInfoTree->Fill();
         }
     }
