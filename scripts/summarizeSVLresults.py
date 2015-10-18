@@ -138,64 +138,86 @@ def analyzePEresults(key,fIn,outDir,doPlots=True,syst=''):
 	#show results
 	canvas = ROOT.TCanvas('c_%s_%s'%(key,syst),'c',1500,500)
 	canvas.Divide(3,1)
+	line = ROOT.TLine()
+	line.SetLineColor(ROOT.kGray+1)
+	line.SetLineStyle(2)
 
-	#bias
+	# read the tree
+	peinfo = fIn.Get('%s/peinfo_%s'%(key,key)) ## TTree
+
+	# define the histograms
+	# careful with the binning: if something is outside the range it gives trouble
+	mtopbiasH    = ROOT.TH1D('mtopbias_%s'%key,
+	                         ';#Deltam_{t} [GeV];Pseudo-experiments',
+	                         200, -10, 10)
+	mtopFitStatH = ROOT.TH1D('statunc_%s'%key,
+	                         ';#sigma_{stat}(m_{t}) [GeV];Pseudo-experiments',
+	                         100, 0, 2.5)
+	mtopFitPullH = ROOT.TH1D('pull_%s'%key,
+	                         (';Pull=(m_{t}-m_{t}^{true})/#sigma_{stat}(m_{t});'
+	                          'Pseudo-experiments'),
+	                         100, -4.0, 4.0)
+	fitCorrH     = ROOT.TH2D('muvsbias_%s'%key,
+	                         (';#Delta m_{t} [GeV];#mu=#sigma/#sigma_{th}(172.5 GeV);'
+	                          'Pseudo-experiments'),
+	                         100, -5, 5, 100, 0.80, 1.20)
+
+	# project the histograms from the tree
+	peinfo.Project("mtopbias_%s"%key, "(mtopfit-genmtop)","")
+	peinfo.Project("statunc_%s"%key, "statunc","")
+	peinfo.Project("pull_%s"%key, "pull","")
+	peinfo.Project("muvsbias_%s"%key, "mu:(mtopfit-genmtop)","")
+
+	# bias
 	canvas.cd(1)
-	mtopFitH=fIn.Get('%s/mtopfit_%s'%(key,key))
-	mtopFitH.Draw()
-	mtopFitH.Fit('gaus','LMQ+')
+	mtopbiasH.Draw("PE")
+	mtopbiasH.Fit('gaus','LMQ+', 'PE')
+
 	try:
-		gaus=mtopFitH.GetFunction('gaus')
+		gaus=mtopbiasH.GetFunction('gaus')
 		PEsummary['bias']=(gaus.GetParameter(1),gaus.GetParError(1))
-	except:
-		pass
+	except: pass ## FIXME
 	label=ROOT.TLatex()
 	label.SetNDC()
 	label.SetTextFont(42)
 	label.SetTextSize(0.04)
 	label.DrawLatex(0.1,0.92,'#bf{CMS} #it{simulation}')
-	if 'bias' in PEsummary : label.DrawLatex(0.15,0.80,'<m_{t}>=%3.3f#pm%3.3f'%(PEsummary['bias'][0],PEsummary['bias'][1]))
+	if 'bias' in PEsummary:
+		label.DrawLatex(0.15,0.80,'<m_{t}>=%3.3f#pm%3.3f'%(
+			                   PEsummary['bias'][0],
+			                   PEsummary['bias'][1]))
 	channelTitle=key.replace('_',', ')
 	label.DrawLatex(0.15,0.84,channelTitle)
+	ROOT.gPad.RedrawAxis()
 
-	#stat unc
-	#canvas.cd(2)
-	mtopFitStatH=fIn.Get('%s/mtopfit_statunc_%s'%(key,key))
-	#mtopFitStatH.Draw('hist')
-	#mtopFitStatH.SetFillStyle(1001)
-	#mtopFitStatH.SetFillColor(ROOT.kGray)
-	#label.DrawLatex(0.15,0.80,
-	#                '<#sigma_{stat}>=%3.3f #sigma(#sigma_{stat})=%3.3f'
-	#                %(mtopFitStatH.GetMean(),mtopFitStatH.GetRMS()))
-	PEsummary['stat']=(mtopFitStatH.GetMean(),mtopFitStatH.GetMeanError())
+	# stat unc
+	PEsummary['stat'] = mtopFitStatH.GetMean()
 
-	#pull
+	# pull
 	canvas.cd(2)
-	mtopFitPullH=fIn.Get('%s/mtopfit_pull_%s'%(key,key))
-	mtopFitPullH.Rebin(4)
-	mtopFitPullH.Draw()
-	mtopFitPullH.Fit('gaus','LMQ+')
+	mtopFitPullH.Draw("PE")
+	mtopFitPullH.Fit('gaus','LMQ+', 'PE')
 	try:
 		gaus=mtopFitPullH.GetFunction('gaus')
 		PEsummary['pull']=(gaus.GetParameter(1),gaus.GetParameter(2))
-		label.DrawLatex(0.15,0.80,'<pull>=%3.3f  #sigma(pull)=%3.3f'%(gaus.GetParameter(1),gaus.GetParameter(2)))
-	except:
-		pass
+		label.DrawLatex(0.15,0.80,'<pull>=%3.3f  #sigma(pull)=%3.3f'%(
+			                    gaus.GetParameter(1),
+			                    gaus.GetParameter(2)))
+	except: pass ## FIXME
+	ROOT.gPad.RedrawAxis()
 
-	#correlation with signal strength
+	# correlation with signal strength
 	canvas.cd(3)
-	fitCorrH=fIn.Get('%s/muvsmtop_%s'%(key,key))
 	fitCorrH.Draw('contz')
-	#cont=getContours(fitCorrH)
-	#drawOpt='ac'
-	#for gr in cont:
-	#	gr.Draw(drawOpt)
-	#	drawOpt='c'
-	#	gr.GetXaxis().SetTitle(fitCorrH.GetXaxis().GetTitle())
-	#	gr.GetYaxis().SetTitle(fitCorrH.GetYaxis().GetTitle())
-	label.DrawLatex(0.15,0.80,'#rho(m_{t},#mu)=%3.3f'%fitCorrH.GetCorrelationFactor())
+	line.DrawLine(fitCorrH.GetXaxis().GetXmin(), 1.0,
+		          fitCorrH.GetXaxis().GetXmax(), 1.0)
+	line.DrawLine(0.0, fitCorrH.GetYaxis().GetXmin(),
+		          0.0, fitCorrH.GetYaxis().GetXmax())
 
-	#all done, save
+	label.DrawLatex(0.15,0.80,'#rho(m_{t},#mu)=%3.3f'%fitCorrH.GetCorrelationFactor())
+	ROOT.gPad.RedrawAxis()
+
+	# all done, save
 	canvas.cd()
 	canvas.Modified()
 	canvas.Update()
@@ -240,16 +262,14 @@ def parsePEResultsFromFile(url,verbose=False, doPlots=False):
 
 		useForCalib=True if 'nominal' in syst else False
 		for key in fIn.GetListOfKeys():
-			if verbose:
-				print '  %-18s  ' % key.GetName(),
+			if verbose: print '  %-18s  ' % key.GetName(),
 
 			keyName=key.GetName()
-			PEsummary=analyzePEresults(key=keyName,fIn=fIn,outDir=url,doPlots=doPlots,syst=syst)
+			PEsummary=analyzePEresults(key=keyName,fIn=fIn,outDir=url,doPlots=(doPlots and useForCalib),syst=syst)
 			if not 'bias' in PEsummary : continue
 
 			bias, biasErr = PEsummary['bias']
-			if verbose:
-				print '%6.3f +- %5.3f' % (bias, biasErr)
+			if verbose: print '%6.3f +- %5.3f' % (bias, biasErr)
 
 
 			#save results
@@ -262,7 +282,11 @@ def parsePEResultsFromFile(url,verbose=False, doPlots=False):
 
 			# add point for systematics
 			# if not useForCalib or mass==172.5:
-			results[(keyName,selection)][syst] = (mass+bias,biasErr)
+			results[(keyName,selection)][syst] = (mass+bias,biasErr,PEsummary['stat'])
+
+			# add statistical error for nominal 172.5:
+			if syst == '172.5':
+				results[(keyName,selection)]['stat'] = PEsummary['stat']
 			if not useForCalib: continue
 
 			# otherwise use it for calibration
@@ -318,7 +342,6 @@ def show(grCollMap,outDir,outName,xaxisTitle,yaxisTitle,
 	line.SetLineStyle(2)
 	line.SetLineColor(ROOT.kGray)
 	for key,grColl in sorted(grCollMap.items()):
-
 		ip+=1
 		nleg=0
 		if ip==1:
@@ -488,17 +511,19 @@ def writeSystematicsTable(results,filterCats,ofile,printout=False):
 	#create summary histograms
 	expUnc=ROOT.TH1F('expunc',';Category;Uncertainty [GeV]',len(filterCats),0,len(filterCats))
 	thUnc=ROOT.TH1F('thunc',';Category;Uncertainty [GeV]',len(filterCats),0,len(filterCats))
+	statUnc=ROOT.TH1F('statunc',';Category;Uncertainty [GeV]',len(filterCats),0,len(filterCats))
 	icat=0
 	for cat in filterCats:
 		expUnc.GetXaxis().SetBinLabel(icat+1,CATTOLABEL[cat].replace('mu','#mu'))
 		thUnc.GetXaxis().SetBinLabel(icat+1,CATTOLABEL[cat].replace('mu','#mu'))
+		statUnc.GetXaxis().SetBinLabel(icat+1,CATTOLABEL[cat].replace('mu','#mu'))
 		icat+=1
 
 
 	theosysts = [
 	##   systname   ,variations [up, down],          title,       variation to compare with, included in sum?
-		('powpyth'   , ['powpyth'],                    'Signal model',         '172.5', True ),
-		('powherw'   , ['powherw'],                    'POWHEG+Pythia vs POWHEG+Herwig',         'powpyth', False ),
+		('powpyth'   , ['powpyth'],                    'Signal model',             '172.5', True ),
+		# ('powherw'   , ['powherw'],                    'POWHEG+(Pythia vs Herwig)','powpyth', False ),
 		('scale'     , ['scaleup', 'scaledown'],       '$\\mu_R/\\mu_F$ scales \\ttbar',         '172.5', True ),
 		('tchscale'  , ['tchscaleup', 'tchscaledown'], '\\qquad\\qquad t-channel',       '172.5', True ),
 		('twchscale' , ['twchscaleup','twchscaledown'],'\\qquad\\qquad tW-channel',      '172.5', True ),
@@ -589,14 +614,14 @@ def writeSystematicsTable(results,filterCats,ofile,printout=False):
 		of.write('\\hline\n')
 		ofile.write('%-30s & ' % ('Total %s uncertainty'%name))
 		for cat in filterCats:
-			diffstr = '$ +%4.2f \\pm %4.2f $ & ' % (totup[cat], totupE[cat])
+			diffstr = '$ +%4.2f          $ & ' % (totup[cat])
 			if cat == filterCats[-1]: diffstr = diffstr[:-2]
 			ofile.write(diffstr)
 		ofile.write('\\\\')
 		ofile.write('\n')
 		ofile.write('                               & ')
 		for cat in filterCats:
-			diffstr = '$ %5.2f \\pm %4.2f $ & ' % (totdn[cat], totdnE[cat])
+			diffstr = '$ %5.2f          $ & ' % (totdn[cat])
 			if cat == filterCats[-1]: diffstr = diffstr[:-2]
 			ofile.write(diffstr)
 		ofile.write('\\\\')
@@ -628,7 +653,6 @@ def writeSystematicsTable(results,filterCats,ofile,printout=False):
 			totup_th,totupE_th,totdn_th,totdnE_th = writeSection(theosysts, sel, of, name='theo.')
 
 
-			of.write('\\hline\n')
 			if 'combe_0' in filterCats:
 				of.write('\multicolumn{7}{l}{\\bf Experimental uncertainties}\\\\\n')
 			else:
@@ -636,8 +660,6 @@ def writeSystematicsTable(results,filterCats,ofile,printout=False):
 			of.write('\\hline\n')
 
 			totup_ex,totupE_ex,totdn_ex,totdnE_ex = writeSection(expsysts, sel, of, name='exp.')
-
-			of.write('\\hline\n')
 
 			## Compute the total uncertainty
 			assert(totup_th.keys() == totup_ex.keys())
@@ -648,13 +670,11 @@ def writeSystematicsTable(results,filterCats,ofile,printout=False):
 				totupE[sel][cat] = math.sqrt(totupE_th[cat]**2 + totupE_ex[cat]**2)
 				totdnE[sel][cat] = math.sqrt(totdnE_th[cat]**2 + totdnE_ex[cat]**2)
 
-			icat=0
 			of.write('Total uncertainty  FIXME       & ')
-			for cat in filterCats:
-				diffstr = '$ +%4.2f \\pm %4.2f $ & ' % (totup[sel][cat], totupE[sel][cat])
+			for icat,cat in enumerate(filterCats, 1):
+				diffstr = '$ +%4.2f          $ & ' % (totup[sel][cat])
 				if cat == filterCats[-1]: diffstr = diffstr[:-2]
 				of.write(diffstr)
-				icat+=1
 				expUnc.SetBinContent(icat,ROOT.TMath.Max(ROOT.TMath.Abs(totup_ex[cat]),ROOT.TMath.Abs(totdn_ex[cat])))
 				thUnc.SetBinContent(icat,ROOT.TMath.Max(ROOT.TMath.Abs(totup_th[cat]),ROOT.TMath.Abs(totdn_th[cat])))
 
@@ -663,9 +683,21 @@ def writeSystematicsTable(results,filterCats,ofile,printout=False):
 			of.write('\n')
 			of.write('                               & ')
 			for cat in filterCats:
-				diffstr = '$ %5.2f \\pm %4.2f $ & ' % (totdn[sel][cat], totdnE[sel][cat])
+				diffstr = '$ %5.2f          $ & ' % (totdn[sel][cat])
 				if cat == filterCats[-1]: diffstr = diffstr[:-2]
 				of.write(diffstr)
+			of.write('\\\\')
+			of.write('\n')
+			of.write('\\hline\n')
+
+			of.write('Statistical uncertainty        & ')
+			for icat,cat in enumerate(filterCats,1):
+				diffstr = '$ \\pm%4.2f        $ & ' % results[(cat, sel)]['stat']
+				if cat == filterCats[-1]: diffstr = diffstr[:-2]
+				of.write(diffstr)
+				statUnc.SetBinContent(icat,results[(cat, sel)]['stat'])
+
+
 			of.write('\\\\')
 			of.write('\n')
 			of.write('\\hline\n')
@@ -685,6 +717,7 @@ def writeSystematicsTable(results,filterCats,ofile,printout=False):
 	outF.cd()
 	expUnc.Write()
 	thUnc.Write()
+	statUnc.Write()
 	outF.Close()
 
 	return totup, totdn
@@ -721,6 +754,10 @@ def makeSystPlot(results, totup, totdn):
 		print ' err down  ',
 		for cat in cats: print ('    -%4.2f ' % totdn[sel][cat]),
 		print ''
+
+		print ' stat err  ',
+		for cat in cats: print ('   +-%4.2f ' % results[(cat,sel)]['stat']),
+		print ''
 	print 80*'-'
 
 
@@ -736,13 +773,13 @@ def makeSystPlot(results, totup, totdn):
 		graph_comb_stat = ROOT.TGraphAsymmErrors(1)
 		graph_comb_stat.SetName("systs_comb_stat_%s"%sel)
 		mt_comb = results[('comb_0',sel)]['172.5'][0]
-		staterr = 0.200
-		toterrup = math.sqrt(staterr**2 + totup[sel]['comb_0']**2)
-		toterrdn = math.sqrt(staterr**2 + totdn[sel]['comb_0']**2)
+		staterr_comb = results[('comb_0',sel)]['stat']
+		toterrup = math.sqrt(staterr_comb**2 + totup[sel]['comb_0']**2)
+		toterrdn = math.sqrt(staterr_comb**2 + totdn[sel]['comb_0']**2)
 		graph_comb.SetPoint(0, 0.5, mt_comb)
 		graph_comb.SetPointError(0, 0., 0., toterrdn, toterrup)
 		graph_comb_stat.SetPoint(0, 0.5, mt_comb)
-		graph_comb_stat.SetPointError(0, 0., 0., staterr, staterr)
+		graph_comb_stat.SetPointError(0, 0., 0., staterr_comb, staterr_comb)
 
 		gband = ROOT.TGraphErrors(2)
 		gband.SetName("band_graph_%s"%sel)
@@ -784,13 +821,13 @@ def makeSystPlot(results, totup, totdn):
 		############################
 		chancats = ['combem_0','combee_0','combmm_0','combe_0','combm_0']
 		chanxpos = [1.5,2.5,3.5,4.5,5.5]
-		staterrs = [0.4,0.4,0.4,0.3,0.3]
 		graph_chan = ROOT.TGraphAsymmErrors(len(chancats))
 		graph_chan.SetName("systs_chan_%s"%sel)
 		graph_chan_stat = ROOT.TGraphAsymmErrors(len(chancats))
 		graph_chan_stat.SetName("systs_chan_stat_%s"%sel)
-		for n,(xpos,cat,staterr) in enumerate(zip(chanxpos, chancats,staterrs)):
-			toterrup = math.sqrt(staterr**2 + totup[sel][cat]**2)
+		for n,(xpos,cat) in enumerate(zip(chanxpos, chancats)):
+			staterr = results[(cat,sel)]['stat']
+			toterrup = math.sqrt(staterr**2 + totup[sel][cat]**2) ## FIXME: Full stat error up or half?
 			toterrdn = math.sqrt(staterr**2 + totdn[sel][cat]**2)
  			graph_chan.SetPoint(n, xpos, results[(cat,sel)]['172.5'][0])
 			graph_chan.SetPointError(n, 0., 0., toterrdn, toterrup)
@@ -809,12 +846,12 @@ def makeSystPlot(results, totup, totdn):
 		############################
 		ntrkcats = ['comb_3','comb_3','comb_5']
 		ntrkxpos = [6.5,7.5,8.5]
-		staterrs = [0.3,0.3,0.3]
 		graph_ntrk = ROOT.TGraphAsymmErrors(len(ntrkcats))
 		graph_ntrk.SetName("systs_ntrk_%s"%sel)
 		graph_ntrk_stat = ROOT.TGraphAsymmErrors(len(ntrkcats))
 		graph_ntrk_stat.SetName("systs_ntrk_stat_%s"%sel)
-		for n,(xpos,cat,staterr) in enumerate(zip(ntrkxpos, ntrkcats,staterrs)):
+		for n,(xpos,cat) in enumerate(zip(ntrkxpos, ntrkcats)):
+			staterr = results[(cat,sel)]['stat']
 			toterrup = math.sqrt(staterr**2 + totup[sel][cat]**2)
 			toterrdn = math.sqrt(staterr**2 + totdn[sel][cat]**2)
  			graph_ntrk.SetPoint(n, xpos, results[(cat,sel)]['172.5'][0])
@@ -872,7 +909,7 @@ def makeSystPlot(results, totup, totdn):
 		# label.DrawLatex(0.34,0.25,CATTOFLABEL['comb_0'])
 		# label.DrawLatex(0.15,0.50,"m_{top}^{comb.} = %5.2f^{+%4.2f}_{-%4.2f} GeV" % (mt_comb, totdn[sel]['comb_0'], totup[sel]['comb_0']))
 		label.DrawLatex(-3,mt_comb,"m_{top}^{comb.} = %5.2f^{+%4.2f}_{-%4.2f} #pm %4.2f GeV" %
-			                       (mt_comb, totup[sel]['comb_0'], totdn[sel]['comb_0'], 0.20))
+			                       (mt_comb, totup[sel]['comb_0'], totdn[sel]['comb_0'], staterr_comb))
 
 		label.SetTextColor(ROOT.kGray+2)
 		label.SetTextSize(14)
@@ -889,7 +926,9 @@ def makeSystPlot(results, totup, totdn):
 
 
 		ROOT.gPad.RedrawAxis()
+		if sel == '': sel = 'inclusive'
 		canv.SaveAs("syst_by_channel_%s.pdf"%sel)
+		canv.SaveAs("syst_by_channel_%s.png"%sel)
 
 	return
 
@@ -897,15 +936,29 @@ def makeSystPlot(results, totup, totdn):
 """
 """
 def compareResults(files):
+	labels = {
+		'inclusive': "inclusive",
+		'optmrank':  "optmrank",
+		'mrank1':    "mrank1",
+		'mrank1dr':  "mrank1dr",
+		'drrank1dr': "drrank1dr",
+	}
+	axislabel = {
+		'expunc'  : 'Experimental Uncertainty [GeV]',
+		'thunc'   : 'Theory Uncertainty [GeV]',
+		'statunc' : 'Statistical Uncertainty [GeV]',
+	}
+
 	c=ROOT.TCanvas('c','c',700,500)
-	for unc in ['expunc','thunc']:
+	for unc in ['expunc','thunc','statunc']:
 
 		#get histos from files
 		allH=[]
 		for ifile in xrange(0,len(files)):
 			inF=ROOT.TFile.Open(files[ifile])
-			label='inclusive'
-			if 'optmrank' in files[ifile] : label='optmrank'
+			label=''
+			for key in labels.keys():
+				if key in files[ifile]: label=labels[key]
 			allH.append( inF.Get(unc).Clone(unc+'_'+label) )
 			allH[-1].SetTitle(label)
 			allH[-1].SetDirectory(0)
@@ -921,9 +974,15 @@ def compareResults(files):
 			drawOpt='hist' if i==0 else 'histsame'
 			allH[i].Draw(drawOpt)
 			allH[i].SetDirectory(0)
+			allH[i].SetLineWidth(2)
 			allH[i].SetLineColor(COLORS[i])
 			allH[i].SetDirectory(0)
-			allH[i].GetYaxis().SetRangeUser(0,3)
+			allH[i].GetYaxis().SetTitle(axislabel[unc])
+			allH[i].GetYaxis().SetRangeUser(0,4.0)
+			if unc == 'expunc':
+				allH[i].GetYaxis().SetRangeUser(0,2)
+			if unc == 'statunc':
+				allH[i].GetYaxis().SetRangeUser(0,2)
 			leg.AddEntry(allH[i],allH[i].GetTitle(),'l')
 		leg.Draw()
 
@@ -932,7 +991,10 @@ def compareResults(files):
 		txt.SetTextFont(42)
 		txt.SetTextSize(0.04)
 		txt.DrawLatex(0.12,0.92,'#bf{CMS} #it{simulation}')
-		for ext in ['png','pdf']: c.SaveAs('%s_comp.%s'%(unc,ext))
+		appendix = ''
+		if files[0].endswith('bychan.root'): appendix = '_bychan'
+		if files[0].endswith('bytracks.root'): appendix = '_bytracks'
+		for ext in ['png','pdf']: c.SaveAs('%s_comp%s.%s'%(unc,appendix,ext))
 
 
 """
