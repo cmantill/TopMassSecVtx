@@ -139,40 +139,52 @@ def createHistos(filename,isData,histos,var):
 
         # Fill the histograms according to the distrubution variable
         # pT of the lepton pair: Pt(l+l-) = ll.Pt      
-        if var == 'ptll': 
-            histos[rec].Fill(ll.Pt(),weight)
+        if var == 'ptll':
+            binWidth = histos[rec].GetXaxis().GetBinWidth(histos[rec].GetXaxis().FindBin(ll.Pt() ) )
+            histos[rec].Fill(ll.Pt(),weight/binWidth)
             if not isData:
-                histos[gen].Fill(gll.Pt(),weight)
-
+                binWidthGen = histos[gen].GetXaxis().GetBinWidth(histos[gen].GetXaxis().FindBin(gll.Pt() ) )
+                histos[gen].Fill(gll.Pt(),weight/binWidthGen)
+ 
         # E positive lepton: E(l+) = lp.E()                                                                                                                                                                                   
         if var == 'Epos':
-            histos[rec].Fill(lp.E(),weight)
+            binWidth = histos[rec].GetXaxis().GetBinWidth(histos[rec].GetXaxis().FindBin(lp.E() ) )
+            histos[rec].Fill(lp.E(),weight/binWidth)
             if not isData:
-                histos[gen].Fill(glp.E(),weight)
+                binWidthGen = histos[gen].GetXaxis().GetBinWidth(histos[gen].GetXaxis().FindBin(glp.Pt() ) )
+                histos[gen].Fill(glp.Pt(),weight/binWidthGen)
 
         # pT positive lepton: Pt(l+) = lp.Pt()                                                                                                                                                                                  
         if var == 'ptpos':
-            histos[rec].Fill(lp.Pt(),weight)                                                                                                                                                                                    
+            binWidth = histos[rec].GetXaxis().GetBinWidth(histos[rec].GetXaxis().FindBin(lp.Pt() ) )
+            histos[rec].Fill(lp.Pt(),weight/binWidth)
             if not isData:
-                histos[gen].Fill(glp.Pt(),weight)
+                binWidthGen = histos[gen].GetXaxis().GetBinWidth(histos[gen].GetXaxis().FindBin(glp.Pt() ) )
+                histos[gen].Fill(glp.Pt(),weight/binWidthGen)
 
         # Invariant mass of the lepton pair: M(l+l-) = ll.M()                                                                                                                                                                    
         if var == 'mll':
-            histos[rec].Fill(ll.M(),weight)                                                                                                                                                                                     
+            binWidth = histos[rec].GetXaxis().GetBinWidth(histos[rec].GetXaxis().FindBin(ll.M() ) )
+            histos[rec].Fill(ll.M(),weight/binWidth)
             if not isData:
-                    histos[gen].Fill(gll.M(),weight)
+                binWidthGen = histos[gen].GetXaxis().GetBinWidth(histos[gen].GetXaxis().FindBin(gll.M() ) )
+                histos[gen].Fill(gll.M(),weight/binWidthGen)
 
         # Sum of energies: E(l+)+E(l-) = lp.E() + lm.E()                                                                                                                                                                    
         if var == 'EposEm':
-            histos[rec].Fill(lp.E() + lm.E(),weight)                                                                                                                                                                            
+            binWidth = histos[rec].GetXaxis().GetBinWidth(histos[rec].GetXaxis().FindBin(lp.E() + lm.E() ) )
+            histos[rec].Fill(lp.E() + lm.E(),weight/binWidth)
             if not isData:
-                histos[gen].Fill(glp.E() + glm.E(),weight)
+                binWidthGen = histos[gen].GetXaxis().GetBinWidth(histos[gen].GetXaxis().FindBin(glp.E() + glm.E() ) )
+                histos[gen].Fill(glp.E() + glm.E(),weight/binWidthGen)
                 
         # Sum of Pt: Pt(l+)+Pt(l-) = lp.Pt() + lm.Pt()                                                                                                                                                                
         if var == 'ptposptm':
-            histos[rec].Fill(lp.Pt() + lm.Pt(),weight)                                                                                                                                                                          
+            binWidth = histos[rec].GetXaxis().GetBinWidth(histos[rec].GetXaxis().FindBin(lp.Pt() + lm.Pt() ) )
+            histos[rec].Fill(lp.Pt() + lm.Pt(),weight/binWidth)
             if not isData:
-                histos[gen].Fill(glp.Pt() + glm.Pt(),weight)
+                binWidthGen = histos[gen].GetXaxis().GetBinWidth(histos[gen].GetXaxis().FindBin(glp.Pt() + glm.Pt() ) )
+                histos[gen].Fill(glp.Pt() + glm.Pt(),weight/binWidthGen)
 
     # Close file
     fIn.Close()
