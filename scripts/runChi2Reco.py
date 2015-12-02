@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 #!/usr/bin/env python                                                                                       
+=======
+#!/usr/bin/env python                                                                                                                                                                                                             
+>>>>>>> 6fd17e44ea082e71de283b5b10c54f68458c5c7a
 from array import array
 import os, sys,numpy
 import ROOT
@@ -9,6 +13,7 @@ from ROOT import TMath
 from UserCode.TopMassSecVtx.PlotUtils import *
 
 """                                                                                                                                                                                                                              
+<<<<<<< HEAD
 Chi square test
 """
 def chitest():
@@ -109,10 +114,112 @@ def chitest():
         print err_1
 
 """                                                                                                                                                                                                                             
+=======
+Chi square test                                                                                                                                                                                                                   
+"""
+def chitest():
+
+  histos={}
+  chisquares = {}
+  MASS = ['166','169','171','172','173','175','178']
+  #VARS = ['ptll','mll','ptpos','ptposptm','Epos','EposEm']                                                                                                                                                                     
+  #TAGS = ['lesup','lesdn','jesup','jesdn','jerup','jerdn','puup','pudn','btagup','btagdn','mistagup','mistagdn','lepselup','lepseldn']                                                                                         
+  TAGS = ['powherw','matchingup','matchingdown','scaleup','scaledown','toppt']
+  VARS = ['ptposptm']
+  for v in VARS:
+
+    FILES = [('Dileptons/%s/reco/MC8TeV_TTJets_MSDecays_166v5.root'%v,'166'),
+             ('Dileptons/%s/reco/MC8TeV_TTJets_MSDecays_169v5.root'%v,'169'),
+             ('Dileptons/%s/reco/MC8TeV_TTJets_MSDecays_171v5.root'%v,'171'),
+             ('Dileptons/%s/reco/MC8TeV_TTJets_MSDecays_172v5.root'%v,'172'),
+             ('Dileptons/%s/reco/MC8TeV_TTJets_MSDecays_173v5.root'%v,'173'),
+             ('Dileptons/%s/reco/MC8TeV_TTJets_MSDecays_175v5.root'%v,'175'),
+             ('Dileptons/%s/reco/MC8TeV_TTJets_MSDecays_178v5.root'%v,'178')]
+               
+    minx_172 = 0
+
+    chi2calibration  = []
+    err_1 = []
+    for fil,mass in FILES:
+      filename = ROOT.TFile.Open(fil)
+      hist_ref = filename.Get('rec')
+      hist_ref.SetDirectory(0)
+      filename.Close()
+
+      print 'Having %s fixed for %s'%(mass,v)
+      chisquare = []
+      for f,m in FILES:
+        fIn = ROOT.TFile.Open(f)
+        hist = fIn.Get('gen')
+        hist.SetDirectory(0)
+        fIn.Close()
+        chi2 = hist.Chi2Test(hist_ref,"CHI2")
+        chisquare.append(chi2)
+	      print '%s %3.4f'%(m,chi2)
+        outputName = 'Dileptons/%s/chi_test_%s'%(v,mass)
+        minx,b,c1 = graphChi2(v,mass,chisquare,outputName)
+
+        if mass != '178' and mass != '166':
+        print 'm_{t}=%.2f + %.2f - %.2f'%(minx,b,c1)
+        chi2calibration.append(minx)
+        err_1.append(b)
+
+        if mass == '172':
+          minx_172 = minx
+          print minx_172
+
+	    print chi2calibration
+      print err_1
+
+      graph(v,chi2calibration,err_1)
+
+      # Calculate systematics for shape measurement at reco level                                                                                                                                                               
+	    systematics = []
+
+      for tag in TAGS:
+        fil = 'Dileptons/%s/reco/DileptonKin_%s.root'%(v,tag)
+        filename = ROOT.TFile.Open(fil)
+        hist_ref = filename.Get('rec')
+        hist_ref.SetDirectory(0)
+        filename.Close()
+
+        print 'Having %s fixed for %s'%(tag,v)
+        chisquare = []
+        for f,m in FILES:
+          fIn = ROOT.TFile.Open(f)
+          hist = fIn.Get('gen')
+          hist.SetDirectory(0)
+          fIn.Close()
+          chi2 = hist.Chi2Test(hist_ref,"CHI2")
+          chisquare.append(chi2)
+	    	  print '%s %3.4f'%(m,chi2)
+        mass = '172'
+        outputName = 'Dileptons/%s/systs/chi_test_%s'%(v,tag)
+        minx,b,c1 = graphChi2(v,mass,chisquare,outputName)
+
+        print 'm_{t}=%.2f + %.2f - %.2f'%(minx,b,c1)
+        print 'nominal value = %.2f'%minx_172
+        diff = minx-minx_172
+        print '%s %s %.2f %.2f %.2f'%(v,tag,minx,minx_172,diff)
+        systematics.append((tag,diff))
+
+	  diffplus = 0
+	  diffmin = 0
+    for tag,val in systematics:
+      print '%s %2.3f'%(tag,val)
+      if val >= 0: diffplus += val**2
+      if val < 0: diffmin += val**2
+    print 'diffplus %2.3f'%sqrt(diffplus)
+    print 'diffminus %2.3f'%sqrt(diffmin)
+    print err_1
+
+"""                                                                                                                                                                                                                               
+>>>>>>> 6fd17e44ea082e71de283b5b10c54f68458c5c7a
 Graph Chi2 pol2 plot                                                                                                                                                                                                             
 """
 def graphChi2(var,m,chi2,outputName):
 
+<<<<<<< HEAD
     #pT positive lepton                                                                                                                                                                                                         
     if var == 'ptpos': title = 'p_{T}(l^{+})'
     #pT positive lepton                                                                                                                                                                                                         
@@ -133,6 +240,28 @@ def graphChi2(var,m,chi2,outputName):
     chi2 = array('d', chi2)
         
     #Create a canvas for plotting your graph                                                                                                                                                                                 
+=======
+    #pT positive lepton                                                                                                                                                                                                           
+    if var == 'ptpos': title = 'p_{T}(l^{+})'
+    #pT positive lepton                                                                                                                                                                                                           
+    if var == 'Epos': title = 'E(l^{+})'
+    #pT charged-lepton pair                                                                                                                                                                                                       
+    if var == 'ptll': title = 'p_{T}(l^{+}l^{-})'
+    #M charged-lepton pair                                                                                                                                                                                                        
+    if var == 'mll': title = 'M(l^{+}l^{-})'
+    #Scalar sum of E                                                                                                                                                                                                              
+    if var == 'EposEm': title = 'E(l^{+})+E(l^{-})'
+    #Scalar sum of Pt                                                                                                                                                                                                             
+    if var == 'ptposptm': title = 'p_{T}(l^{+})+p_{T}(l^{-})'
+
+    mass = [166.5, 169.5, 171.5, 172.5, 173.5, 175.5 , 178.5]
+    # mass = [169.5, 171.5, 172.5, 173.5, 175.5]                                                                                                                                                                                  
+
+    mass = array('d', mass)
+    chi2 = array('d', chi2)
+
+    #Create a canvas for plotting your graph                                                                                                                                                                                      
+>>>>>>> 6fd17e44ea082e71de283b5b10c54f68458c5c7a
     c = ROOT.TCanvas('c','c')
     ROOT.gStyle.SetCanvasDefH(600);
     ROOT.gStyle.SetCanvasDefW(600);
@@ -142,9 +271,15 @@ def graphChi2(var,m,chi2,outputName):
     pad1=ROOT.TPad('p1','p1',0.,0.,1.0,1.0)
     pad1.Draw()
 
+<<<<<<< HEAD
     graphs = {} 
     graphs['chi2'] = ROOT.TGraph(len(mass),mass,chi2)
        
+=======
+    graphs = {}
+    graphs['chi2'] = ROOT.TGraph(len(mass),mass,chi2)
+
+>>>>>>> 6fd17e44ea082e71de283b5b10c54f68458c5c7a
     ROOT.gStyle.SetOptStat(0)
     ROOT.gStyle.SetOptTitle(0)
 
@@ -152,7 +287,11 @@ def graphChi2(var,m,chi2,outputName):
     graphs['chi2'].SetMarkerStyle(1)
     graphs['chi2'].SetMarkerSize(2)
     graphs['chi2'].SetLineColor(ROOT.kBlack)
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> 6fd17e44ea082e71de283b5b10c54f68458c5c7a
     pol2 = ROOT.TF1("pol2", "pol2", 166.5, 178.5)
     pol2.SetLineWidth(4)
     pol2.SetLineStyle(1)
@@ -182,7 +321,11 @@ def graphChi2(var,m,chi2,outputName):
     tlat3.SetTextAlign(31)
     tlat3.DrawLatex(0.8,0.24,'Fit Results')
     tlat3.DrawLatex(0.8,0.19,'m_{t}=%.2f + %.2f - %.2f'%(minx,b,c1))
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> 6fd17e44ea082e71de283b5b10c54f68458c5c7a
     graphs['chi2'].Draw("AP")
     graphs['chi2'].GetXaxis().SetTitle("Top Mass [GeV]")
     graphs['chi2'].GetYaxis().SetTitle("#chi^{2} %s"%title)
@@ -192,6 +335,7 @@ def graphChi2(var,m,chi2,outputName):
     graphs['chi2'].GetYaxis().SetTitleSize(0.037)
     graphs['chi2'].GetYaxis().SetLabelSize(0.037)
 
+<<<<<<< HEAD
     #for ext in ['png','pdf']:
     #    c.SaveAs('%s.%s'%(outputName,ext))
     #del c
@@ -214,6 +358,30 @@ def graph(var,moments_unf,sigma_unf):
     #Scalar sum of E                                                                                                                                                                                                           
     if var == 'EposEm': title = 'E(l^{+})+E(l^{-})'
     #Scalar sum of Pt                                                                                                                                                                                                          
+=======
+    #for ext in ['png','pdf']:                                                                                                                                                                                                    
+    #    c.SaveAs('%s.%s'%(outputName,ext))                                                                                                                                                                                       
+    #del c                                                                                                                                                                                                                        
+
+    return minx,b,c1
+
+"""                                                                                                                                                                                                                               
+Graph Calibration chi2                                                                                                                                                                                                            
+"""
+def graph(var,moments_unf,sigma_unf):
+
+    #pT positive lepton                                                                                                                                                                                                           
+    if var == 'ptpos': title = 'p_{T}(l^{+})'
+    #pT positive lepton                                                                                                                                                                                                           
+    if var == 'Epos': title = 'E(l^{+})'
+    #pT charged-lepton pair                                                                                                                                                                                                       
+    if var == 'ptll': title = 'p_{T}(l^{+}l^{-})'
+    #M charged-lepton pair                                                                                                                                                                                                        
+    if var == 'mll': title = 'M(l^{+}l^{-})'
+    #Scalar sum of E                                                                                                                                                                                                              
+    if var == 'EposEm': title = 'E(l^{+})+E(l^{-})'
+    #Scalar sum of Pt                                                                                                                                                                                                             
+>>>>>>> 6fd17e44ea082e71de283b5b10c54f68458c5c7a
     if var == 'ptposptm': title = 'p_{T}(l^{+})+p_{T}(l^{-})'
 
     mass = [169.5, 171.5, 172.5, 173.5, 175.5]
@@ -296,6 +464,7 @@ def graph(var,moments_unf,sigma_unf):
     multigraphs['u1'].GetYaxis().SetLabelSize(0.037)
 
     outputName = 'Dileptons/%s/calibration_chi2_reco'%var
+<<<<<<< HEAD
     #for ext in ['png','pdf']:
     #    c.SaveAs('%s.%s'%(outputName,ext))
     #del c
@@ -303,6 +472,14 @@ def graph(var,moments_unf,sigma_unf):
 
 """                                                                                                      
 steer                                                                                                    
+=======
+    #for ext in ['png','pdf']:                                                                                                                                                                                                    
+    #    c.SaveAs('%s.%s'%(outputName,ext))                                                                                                                                                                                       
+    #del c                                                           
+    
+"""                                                                                                                                                                                                                               
+steer                                                                                                                                                                                                                             
+>>>>>>> 6fd17e44ea082e71de283b5b10c54f68458c5c7a
 """
 def main():
     ROOT.gStyle.SetOptStat(0)
@@ -317,8 +494,17 @@ def main():
     print 80*'='
     chitest()
     print 80*'='
+<<<<<<< HEAD
     
     return 0
 
 if __name__ == "__main__":
 	sys.exit(main())
+=======
+
+    return 0
+
+if __name__ == "__main__":
+        sys.exit(main())
+
+>>>>>>> 6fd17e44ea082e71de283b5b10c54f68458c5c7a
