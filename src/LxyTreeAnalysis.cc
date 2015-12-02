@@ -1061,8 +1061,15 @@ void LxyTreeAnalysis::BookDileptonTree()
     fDileptonInfoTree->Branch("NJets",     &fTNJets,     "NJets/I");
     fDileptonInfoTree->Branch("MET",       &fTMET,       "MET/F");
     fDileptonInfoTree->Branch("NPVtx",     &fTNPVtx,     "NPVtx/I");
+    fDileptonInfoTree->Branch("JPt",       &fTJPt,       "JPt/F");
     fDileptonInfoTree->Branch("LpPt",      &fLpPt,     "LpPt/F");
+    // Lepton Energy Scale Up and Down
+    fDileptonInfoTree->Branch("LpPt_sf",   fLpPt_sf,   "LpPt_sf[2]/F");
+    //
     fDileptonInfoTree->Branch("LmPt",      &fLmPt,     "LmPt/F");
+    // Lepton Energy Scale Up and Down
+    fDileptonInfoTree->Branch("LmPt_sf",   fLmPt_sf,   "LmPt_sf[2]/F");
+    //
     fDileptonInfoTree->Branch("LpEta",      &fLpEta,     "LpEta/F");
     fDileptonInfoTree->Branch("LpId",      &fLpId,     "LpId/I");
     fDileptonInfoTree->Branch("LmEta",      &fLmEta,     "LmEta/F");
@@ -1081,8 +1088,13 @@ void LxyTreeAnalysis::BookDileptonTree()
 
 void LxyTreeAnalysis::ResetDileptonTree()
 {
+    fTJPt=0;
     fLpPt=0;
+    fLpPt_sf[0]=0;
+    fLpPt_sf[1]=0;
     fLmPt=0;
+    fLmPt_sf[0]=0;
+    fLmPt_sf[1]=0;
     fLpEta=0;
     fLmEta=0;
     fLpPhi=0;
@@ -1446,7 +1458,6 @@ void LxyTreeAnalysis::analyze() {
             if (abs(evcat) == 11*100 || abs(evcat) == 13*100) {
                 if ( svl.svldeltar < 0.4 ) continue;
             }
-
             fTSVLMass       = svl.svlmass;
             fTSVLMass_sf[0] = svl.svlmass_sf[0];
             fTSVLMass_sf[1] = svl.svlmass_sf[1];
@@ -1511,7 +1522,11 @@ void LxyTreeAnalysis::analyze() {
             }
             fTSVNtrk       = svntk[svl.svindex];
             fTSVMass       = svmass[svl.svindex];
+<<<<<<< HEAD
 	    fTBHadId       = bhadid[svl.svindex];
+=======
+	        fTBHadId       = bhadid[svl.svindex];
+>>>>>>> 3ac761190b5c5ee2764a64e5f28f1ce9e3bd5efb
             fTBHadNeutrino = bhadneutrino[svl.svindex]; // either -999, 0, or 1
             if(fTBHadNeutrino < 0) fTBHadNeutrino = -1; // set -999 to -1
 
@@ -1558,8 +1573,44 @@ void LxyTreeAnalysis::analyze() {
 
         if(storeDileptonTree)
         {
+            fTBtagWeight[0] = passBtag; // nominal
+            fTBtagWeight[1] = passBtagdown; // unclustered met down
+            fTBtagWeight[2] = passBtagup; // unclustered met up
+
             int pidx(lid[0]>0 ? 1 : 0), midx(lid[0]>0 ? 0 : 1);
+            float lpPt_sf[2];
+            float lmPt_sf[2];
+
+            //lepton energy scale variation on Pt
+            for(size_t ivar=0; ivar<2; ivar++)
+            {
+                lpPt_sf[ivar]=1.0;
+                lmPt_sf[ivar]=1.0;
+
+                // LpPt
+                if(lpt[pidx]<=0) continue;
+                float lesf(1.0);
+                int varSign( ivar==0 ? -1 : 1 );
+                float lesUnc(0.002);
+                if(abs(lid[pidx])==11) lesUnc=utils::cmssw::getElectronEnergyScale(lpt[pidx],leta[pidx]);
+                lesf=(1.0+varSign*lesUnc);
+                lpPt_sf[ivar]=lesf*lpt[pidx];
+
+                lesUnc = 0.002;
+
+                // LmPt
+                if(lpt[midx]<=0) continue;
+                if(abs(lid[midx])==11) lesUnc=utils::cmssw::getElectronEnergyScale(lpt[midx],leta[midx]);
+                lesf=(1.0+varSign*lesUnc);
+                lmPt_sf[ivar]=lesf*lpt[midx];
+            }
+
+            //fTJPt = jpt[midx];
+            //
             fLmPt=lpt[midx];
+            fLmPt_sf[0] = lmPt_sf[0];
+            fLmPt_sf[1] = lmPt_sf[1];
+            //
             fLmEta=leta[midx];
             fLmPhi=lphi[midx];
             fLmId=lid[midx];
@@ -1567,14 +1618,18 @@ void LxyTreeAnalysis::analyze() {
             fGenLmEta=gleta[midx];
             fGenLmPhi=glphi[midx];
             fGenLmId=glid[midx];
+            //
             fLpPt=lpt[pidx];
+            fLpPt_sf[0] = lpPt_sf[0];
+            fLpPt_sf[1] = lpPt_sf[1];
+            //
             fLpEta=leta[pidx];
             fLpPhi=lphi[pidx];
             fLpId=lid[pidx];
             fGenLpPt=glpt[pidx];
             fGenLpEta=gleta[pidx];
             fGenLpPhi=glphi[pidx];
-            fGenLmId=glid[pidx];
+            fGenLpId=glid[pidx];
             fDileptonInfoTree->Fill();
         }
     }

@@ -220,8 +220,9 @@ public:
 
     //Dilepton specific
     TTree *fDileptonInfoTree;
-    Float_t fLpPt,fLmPt,fLpEta,fLmEta,fLpPhi,fLmPhi,fLmId,fLpId;
-    Float_t fGenLpPt,fGenLmPt,fGenLpEta,fGenLmEta,fGenLpPhi,fGenLmPhi,fGenLpId,fGenLmId;
+    Int_t fLmId,fLpId,fGenLpId,fGenLmId;
+    Float_t fLpPt,fLpPt_sf[2],fLmPt,fLmPt_sf[2],fLpEta,fLmEta,fLpPhi,fLmPhi;
+    Float_t fGenLpPt,fGenLmPt,fGenLpEta,fGenLmEta,fGenLpPhi,fGenLmPhi;
 
     TRandom2 rndGen_;
     BTagSFUtil btsfutil_;
