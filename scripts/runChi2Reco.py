@@ -104,8 +104,8 @@ def chitest():
       if val >= 0: diffplus += val**2
       if val < 0: diffmin += val**2
     print 'diffplus %2.3f'%sqrt(diffplus)
-	  print 'diffminus %2.3f'%sqrt(diffmin)
-	  print err_1
+    print 'diffminus %2.3f'%sqrt(diffmin)
+    print err_1
 
 """                                                                                                                                                                                                                               
 Graph Chi2 pol2 plot                                                                                                                                                                                                             
@@ -141,7 +141,7 @@ def graphChi2(var,m,chi2,outputName):
     pad1=ROOT.TPad('p1','p1',0.,0.,1.0,1.0)
     pad1.Draw()
 
-  graphs = {}
+    graphs = {}
     graphs['chi2'] = ROOT.TGraph(len(mass),mass,chi2)
 
     ROOT.gStyle.SetOptStat(0)
@@ -172,7 +172,7 @@ def graphChi2(var,m,chi2,outputName):
     b = (-p1-sqrt(p1**2-4*p2*p0))
     b = minx - b/(2*p2)
     c1 = (-p1+sqrt(p1**2-4*p2*p0))
-  c1 = c1/(2*p2) - minx
+    c1 = c1/(2*p2) - minx
     ROOT.gStyle.SetOptFit(0)
     tlat3 = TLatex()
     tlat3.SetNDC()
@@ -228,7 +228,7 @@ def graph(var,moments_unf,sigma_unf):
     pad1=ROOT.TPad('p1','p1',0.,0,1.0,1.0)
     pad1.Draw()
 
-   tlat = TLatex()
+    tlat = TLatex()
     tlat.SetNDC()
     tlat.SetTextFont(61)
     tlat.SetTextSize(0.04)
